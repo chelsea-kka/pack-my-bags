@@ -1,5 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
+
+const MODEL = "gemini-1.5-flash";
 
 const CATEGORY_NAMES = [
   "证件与支付",
@@ -57,10 +59,10 @@ function parseResponse(text: string): GeneratedCategory[] {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY 未配置" },
+      { error: "GEMINI_API_KEY 未配置" },
       { status: 500 }
     );
   }
@@ -87,31 +89,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const client = new Anthropic({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 4096,
+    },
+  });
 
   try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      messages: [
-        {
-          role: "user",
-          content: buildPrompt(
-            destination.trim(),
-            days,
-            departureDate,
-            additionalInfo?.trim()
-          ),
-        },
-      ],
-    });
+    const result = await model.generateContent(
+      buildPrompt(
+        destination.trim(),
+        days,
+        departureDate,
+        additionalInfo?.trim()
+      )
+    );
 
-    const textBlock = message.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
+    const text = result.response.text();
+    if (!text) {
       throw new Error("Empty response");
     }
 
-    const categories = parseResponse(textBlock.text);
+    const categories = parseResponse(text);
 
     const normalized = CATEGORY_NAMES.map((name) => {
       const found =
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ categories: normalized });
   } catch (err) {
-    console.error("Claude API error:", err);
+    console.error("Gemini API error:", err);
     const message =
       err instanceof Error ? err.message : "生成清单失败，请稍后重试";
     return NextResponse.json({ error: message }, { status: 500 });

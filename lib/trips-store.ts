@@ -1,9 +1,43 @@
 import type { Trip } from "./types";
-import { getTrips, saveTrips } from "./storage";
+import { getTrips, saveTrips, STORAGE_KEY } from "./storage";
 
 type Listener = () => void;
 
+const EMPTY_TRIPS: Trip[] = [];
+
 const listeners = new Set<Listener>();
+
+let cachedRaw: string | null = null;
+let cachedSnapshot: Trip[] = EMPTY_TRIPS;
+
+function readSnapshot(): Trip[] {
+  if (typeof window === "undefined") {
+    return EMPTY_TRIPS;
+  }
+
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === cachedRaw) {
+    return cachedSnapshot;
+  }
+
+  cachedRaw = raw;
+  if (!raw) {
+    cachedSnapshot = EMPTY_TRIPS;
+    return cachedSnapshot;
+  }
+
+  try {
+    cachedSnapshot = JSON.parse(raw) as Trip[];
+  } catch {
+    cachedSnapshot = EMPTY_TRIPS;
+  }
+  return cachedSnapshot;
+}
+
+function updateCache(trips: Trip[]): void {
+  cachedRaw = localStorage.getItem(STORAGE_KEY);
+  cachedSnapshot = trips;
+}
 
 export function subscribeTrips(listener: Listener): () => void {
   listeners.add(listener);
@@ -15,15 +49,16 @@ export function notifyTripsChanged(): void {
 }
 
 export function getTripsSnapshot(): Trip[] {
-  return getTrips();
+  return readSnapshot();
 }
 
 export function getTripsServerSnapshot(): Trip[] {
-  return [];
+  return EMPTY_TRIPS;
 }
 
 export function persistTrips(trips: Trip[]): void {
   saveTrips(trips);
+  updateCache(trips);
   notifyTripsChanged();
 }
 

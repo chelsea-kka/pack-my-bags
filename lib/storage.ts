@@ -1,15 +1,17 @@
 import type { Trip } from "./types";
 
-const STORAGE_KEY = "pack-my-bags-trips";
+export const STORAGE_KEY = "pack-my-bags-trips";
+
+const EMPTY_TRIPS: Trip[] = [];
 
 export function getTrips(): Trip[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_TRIPS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return EMPTY_TRIPS;
     return JSON.parse(raw) as Trip[];
   } catch {
-    return [];
+    return EMPTY_TRIPS;
   }
 }
 
