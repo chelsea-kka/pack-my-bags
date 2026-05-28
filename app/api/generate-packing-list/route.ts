@@ -1,7 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
-
-const MODEL = "gemini-1.5-flash";
+import {
+  formatGeminiError,
+  getGeminiApiKey,
+  getGeminiModelCandidates,
+  isModelNotFoundError,
+} from "@/lib/gemini-errors";
 
 const CATEGORY_NAMES = [
   "证件与支付",
@@ -58,11 +62,48 @@ function parseResponse(text: string): GeneratedCategory[] {
   return parsed.categories;
 }
 
+async function generateWithModel(
+  apiKey: string,
+  modelName: string,
+  prompt: string
+): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 4096,
+    },
+  });
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  if (!text) {
+    throw new Error("Gemini 返回了空内容");
+  }
+  return text;
+}
+
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = getGeminiApiKey();
   if (!apiKey) {
     return NextResponse.json(
-      { error: "GEMINI_API_KEY 未配置" },
+      {
+        error:
+          "GEMINI_API_KEY 未配置。请在项目根目录 .env.local 中设置 GEMINI_API_KEY（可从 Google AI Studio 获取）。",
+        details: JSON.stringify(
+          {
+            envVarsChecked: [
+              "GEMINI_API_KEY",
+              "GOOGLE_API_KEY",
+              "GOOGLE_GENERATIVE_AI_API_KEY",
+            ],
+            hint: "设置后需重启 npm run dev",
+          },
+          null,
+          2
+        ),
+      },
       { status: 500 }
     );
   }
@@ -89,47 +130,55 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: MODEL,
-    generationConfig: {
-      responseMimeType: "application/json",
-      maxOutputTokens: 4096,
-    },
+  const prompt = buildPrompt(
+    destination.trim(),
+    days,
+    departureDate,
+    additionalInfo?.trim()
+  );
+
+  const modelsToTry = getGeminiModelCandidates();
+  let lastError: unknown;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const text = await generateWithModel(apiKey, modelName, prompt);
+      const categories = parseResponse(text);
+
+      const normalized = CATEGORY_NAMES.map((name) => {
+        const found =
+          categories.find((c) => c.name === name) ??
+          categories.find((c) => c.name.includes(name.slice(0, 2)));
+        return {
+          name,
+          items: found?.items?.length ? found.items : [`${name}相关物品`],
+        };
+      });
+
+      return NextResponse.json({
+        categories: normalized,
+        modelUsed: modelName,
+      });
+    } catch (err) {
+      lastError = err;
+      console.error(`Gemini API error (model=${modelName}):`, err);
+
+      if (isModelNotFoundError(err)) {
+        continue;
+      }
+      break;
+    }
+  }
+
+  const { error, details } = formatGeminiError(lastError, {
+    modelsTried: modelsToTry,
   });
 
-  try {
-    const result = await model.generateContent(
-      buildPrompt(
-        destination.trim(),
-        days,
-        departureDate,
-        additionalInfo?.trim()
-      )
-    );
-
-    const text = result.response.text();
-    if (!text) {
-      throw new Error("Empty response");
-    }
-
-    const categories = parseResponse(text);
-
-    const normalized = CATEGORY_NAMES.map((name) => {
-      const found =
-        categories.find((c) => c.name === name) ??
-        categories.find((c) => c.name.includes(name.slice(0, 2)));
-      return {
-        name,
-        items: found?.items?.length ? found.items : [`${name}相关物品`],
-      };
-    });
-
-    return NextResponse.json({ categories: normalized });
-  } catch (err) {
-    console.error("Gemini API error:", err);
-    const message =
-      err instanceof Error ? err.message : "生成清单失败，请稍后重试";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return NextResponse.json(
+    {
+      error,
+      details,
+    },
+    { status: 500 }
+  );
 }

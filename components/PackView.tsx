@@ -87,9 +87,18 @@ export function PackView({
         }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        details?: string;
+        categories?: { name: string; items: string[] }[];
+      };
       if (!res.ok) {
-        throw new Error(data.error ?? "生成失败");
+        const message = [data.error, data.details].filter(Boolean).join("\n\n");
+        throw new Error(message || "生成失败");
+      }
+
+      if (!data.categories?.length) {
+        throw new Error("API 未返回清单数据");
       }
 
       setCategories(categoriesFromApi(data.categories));

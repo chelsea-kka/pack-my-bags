@@ -31,5 +31,5 @@ npm run dev
 
 - Next.js 16 + React 19
 - Tailwind CSS 4
-- Google Gemini API (`gemini-1.5-flash`)
+- Google Gemini API（默认 `gemini-1.5-flash`，不可用时会自动尝试 `gemini-2.5-flash`；可通过 `GEMINI_MODEL` 指定）
 - lucide-react

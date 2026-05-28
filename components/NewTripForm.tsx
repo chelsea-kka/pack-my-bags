@@ -112,7 +112,15 @@ export function NewTripForm({
       </div>
 
       {error && (
-        <p className="mt-3 text-center text-sm text-red-500">{error}</p>
+        <div
+          className="mt-3 max-h-48 overflow-y-auto rounded-xl border border-red-200 bg-red-50 p-3 text-left"
+          role="alert"
+        >
+          <p className="mb-1 text-xs font-semibold text-red-700">错误详情</p>
+          <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-red-600">
+            {error}
+          </pre>
+        </div>
       )}
 
       <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[375px] -translate-x-1/2 px-4">
