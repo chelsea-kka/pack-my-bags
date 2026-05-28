@@ -1,11 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  formatGeminiError,
-  getGeminiApiKey,
-  getGeminiModelCandidates,
-  isModelNotFoundError,
-} from "@/lib/gemini-errors";
+  createQwenClient,
+  dashscopeKeyMissingDetails,
+  dashscopeKeyMissingError,
+  formatDashscopeError,
+  getDashscopeApiKey,
+  QWEN_MODEL,
+} from "@/lib/dashscope";
 
 const CATEGORY_NAMES = [
   "证件与支付",
@@ -21,34 +22,78 @@ type GeneratedCategory = {
   items: string[];
 };
 
+function getSeasonHint(departureDate: string): string {
+  const month = new Date(departureDate + "T00:00:00").getMonth() + 1;
+  if (month >= 3 && month <= 5) return "春季";
+  if (month >= 6 && month <= 8) return "夏季";
+  if (month >= 9 && month <= 11) return "秋季";
+  return "冬季";
+}
+
 function buildPrompt(
   destination: string,
   days: number,
   departureDate: string,
   additionalInfo?: string
 ): string {
-  return `你是一位专业的旅行规划助手。请根据以下行程信息，生成一份详细的行李打包清单。
+  const season = getSeasonHint(departureDate);
+  const hasExtra = Boolean(additionalInfo?.trim());
 
-目的地：${destination}
-出发日期：${departureDate}
-旅行天数：${days}天
-${additionalInfo ? `补充信息：${additionalInfo}` : "补充信息：无"}
+  return `你是一位资深旅行规划师，熟悉全球各目的地的气候、文化、签证政策与当地生活细节。请根据以下行程，生成一份高度个性化、可直接照着打包的行李清单。
 
-请返回严格的 JSON 格式（不要包含 markdown 代码块），结构如下：
+## 行程信息
+- 目的地：${destination}
+- 出发日期：${departureDate}（约属${season}，请结合当地该季节真实气候）
+- 旅行天数：${days} 天
+- 补充信息：${hasExtra ? additionalInfo!.trim() : "无"}
+
+## 输出格式
+仅返回 JSON，不要 markdown 代码块，结构如下：
 {
   "categories": [
-    {
-      "name": "分类名称",
-      "items": ["物品1", "物品2"]
-    }
+    { "name": "分类名称", "items": ["物品1", "物品2"] }
   ]
 }
 
-要求：
-1. 必须包含以下 6 个分类（按此顺序）：${CATEGORY_NAMES.join("、")}
-2. 每个分类至少 2-4 个具体、实用的物品
-3. 物品描述要结合目的地、季节、天数和补充信息个性化
-4. 使用中文`;
+## 分类（必须且仅包含以下 6 个，按此顺序）
+${CATEGORY_NAMES.map((n, i) => `${i + 1}. ${n}`).join("\n")}
+
+## 核心要求
+
+### 1. 目的地针对性（最重要）
+- 根据「${destination}」推断当地气候、电压/插座、货币、常用交通与支付方式，写入具体物品。
+- 结合当地文化与旅行习惯给出特色建议，例如：
+  - 日本：西瓜卡/IC 卡、Visit Japan Web 登记、日元现金、室内拖鞋、折叠伞、便携 Wi-Fi 或 eSIM
+  - 澳大利亚/新西兰：高倍防晒霜 SPF50+、防蚊液、泳装、澳标转换插头
+  - 欧洲：申根区护照、欧元现金、欧标转换插头、防盗腰包
+  - 东南亚：轻便透气衣物、防蚊液、肠胃药、拖鞋、当地 SIM/eSIM
+- 若目的地不明确，根据名称合理推断国家/地区后再给建议。
+- 「证件与支付」「行程准备」中须包含该目的地真实会用到的证件、App、交通卡或入境事项。
+
+### 2. 按 ${days} 天调整数量
+- 衣物类物品必须体现天数：内衣裤、袜子、T 恤等按「每天 1 件 + 备用 1～2 件」或「每 2～3 天 1 件（外套/长裤）」估算，并写清数量。
+- 示例（${days} 天）：内衣 ${Math.min(days + 1, days + 2)} 条、袜子 ${Math.min(days + 1, days + 2)} 双、外穿衣物按天数分层列出。
+- 洗漱/日用品按天数说明是否需旅行装或大容量（如 ${days >= 7 ? "7 天以上建议分装或当地购买" : "短期旅行装即可"}）。
+
+### 3. 补充信息专属物品
+${
+  hasExtra
+    ? `- 用户补充：「${additionalInfo!.trim()}」。必须在相关分类中增加**专属物品**，不可忽略。参考：
+  - 带小孩/亲子：儿童推车/背带、儿童常用药、零食、绘本、儿童防晒霜、备用衣物等
+  - 商务出行：正装/衬衫、领带、笔记本电脑、名片、便携熨斗、商务鞋等
+  - 冬季/滑雪：羽绒服、保暖内衣、手套、暖宝宝、润唇膏等
+  - 户外/徒步：登山鞋、冲锋衣、登山杖、头灯、急救包等
+  - 其他需求：逐条理解并在合适分类中体现`
+    : "- 无补充信息时，不强行添加亲子/商务等场景物品。"
+}
+
+### 4. 物品描述必须具体可执行
+- **禁止**模糊表述：如「换洗衣物」「常用药品」「充电器」「洗漱用品」。
+- **必须**写清品名 + 数量/规格，例如：
+  - ✅「轻便速干 T 恤 3 件」「内裤 5 条」「袜子 5 双」
+  - ✅「10000mAh 移动电源 1 个」「欧标转换插头 1 个」
+  - ✅「SPF50+ 防晒霜 1 支 50ml」
+- 每个分类 3～5 条物品，共约 18～28 条，全部使用简体中文。`;
 }
 
 function parseResponse(text: string): GeneratedCategory[] {
@@ -62,47 +107,33 @@ function parseResponse(text: string): GeneratedCategory[] {
   return parsed.categories;
 }
 
-async function generateWithModel(
+async function generatePackingList(
   apiKey: string,
-  modelName: string,
   prompt: string
 ): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    generationConfig: {
-      responseMimeType: "application/json",
-      maxOutputTokens: 4096,
-    },
+  const client = createQwenClient(apiKey);
+
+  const completion = await client.chat.completions.create({
+    model: QWEN_MODEL,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    max_tokens: 4096,
   });
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const text = completion.choices[0]?.message?.content;
   if (!text) {
-    throw new Error("Gemini 返回了空内容");
+    throw new Error("千问 API 返回了空内容");
   }
   return text;
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = getGeminiApiKey();
+  const apiKey = getDashscopeApiKey();
   if (!apiKey) {
     return NextResponse.json(
       {
-        error:
-          "GEMINI_API_KEY 未配置。请在项目根目录 .env.local 中设置 GEMINI_API_KEY（可从 Google AI Studio 获取）。",
-        details: JSON.stringify(
-          {
-            envVarsChecked: [
-              "GEMINI_API_KEY",
-              "GOOGLE_API_KEY",
-              "GOOGLE_GENERATIVE_AI_API_KEY",
-            ],
-            hint: "设置后需重启 npm run dev",
-          },
-          null,
-          2
-        ),
+        error: dashscopeKeyMissingError(),
+        details: dashscopeKeyMissingDetails(),
       },
       { status: 500 }
     );
@@ -137,48 +168,27 @@ export async function POST(request: NextRequest) {
     additionalInfo?.trim()
   );
 
-  const modelsToTry = getGeminiModelCandidates();
-  let lastError: unknown;
+  try {
+    const text = await generatePackingList(apiKey, prompt);
+    const categories = parseResponse(text);
 
-  for (const modelName of modelsToTry) {
-    try {
-      const text = await generateWithModel(apiKey, modelName, prompt);
-      const categories = parseResponse(text);
+    const normalized = CATEGORY_NAMES.map((name) => {
+      const found =
+        categories.find((c) => c.name === name) ??
+        categories.find((c) => c.name.includes(name.slice(0, 2)));
+      return {
+        name,
+        items: found?.items?.length ? found.items : [`${name}相关物品`],
+      };
+    });
 
-      const normalized = CATEGORY_NAMES.map((name) => {
-        const found =
-          categories.find((c) => c.name === name) ??
-          categories.find((c) => c.name.includes(name.slice(0, 2)));
-        return {
-          name,
-          items: found?.items?.length ? found.items : [`${name}相关物品`],
-        };
-      });
-
-      return NextResponse.json({
-        categories: normalized,
-        modelUsed: modelName,
-      });
-    } catch (err) {
-      lastError = err;
-      console.error(`Gemini API error (model=${modelName}):`, err);
-
-      if (isModelNotFoundError(err)) {
-        continue;
-      }
-      break;
-    }
+    return NextResponse.json({
+      categories: normalized,
+      modelUsed: QWEN_MODEL,
+    });
+  } catch (err) {
+    console.error("Qwen API error:", err);
+    const { error, details } = formatDashscopeError(err);
+    return NextResponse.json({ error, details }, { status: 500 });
   }
-
-  const { error, details } = formatGeminiError(lastError, {
-    modelsTried: modelsToTry,
-  });
-
-  return NextResponse.json(
-    {
-      error,
-      details,
-    },
-    { status: 500 }
-  );
 }
