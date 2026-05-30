@@ -20,7 +20,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { DestinationInfo, PackingCategory } from "@/lib/types";
 import { countProgress, formatDateRangeShort } from "@/lib/utils";
 
@@ -38,9 +38,8 @@ const CATEGORY_ICONS: Record<
   行程准备: Map,
 };
 
-const SWIPE_MAX = 120;      // px — fully open width
-const SWIPE_THRESHOLD = 52; // px — minimum to snap open
-const HINT_KEY = "hygge-pack-swipe-hint-seen";
+const SWIPE_MAX = 120;
+const SWIPE_THRESHOLD = 52;
 
 // ─── SwipeableItem ────────────────────────────────────────────────────────────
 
@@ -49,15 +48,11 @@ function SwipeableItem({
   onAskAI,
   onEdit,
   onDelete,
-  isHintItem = false,
-  onUserSwiped,
 }: {
   children: React.ReactNode;
   onAskAI: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  isHintItem?: boolean;
-  onUserSwiped?: () => void;
 }) {
   const [offset, setOffset] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -66,26 +61,12 @@ function SwipeableItem({
   const startYRef = useRef<number | null>(null);
   const isHorizontalRef = useRef<boolean | null>(null);
   const offsetRef = useRef(0);
-  const firedRef = useRef(false);
-
-  // Onboarding hint animation: slide right then snap back
-  useEffect(() => {
-    if (!isHintItem) return;
-    const t1 = setTimeout(() => { setOffset(62); offsetRef.current = 62; }, 600);
-    const t2 = setTimeout(() => { setOffset(0);  offsetRef.current = 0;  }, 2300); // visible for ~1.7 s
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [isHintItem]);
-
-  const fireSwipedOnce = useCallback(() => {
-    if (!firedRef.current) { firedRef.current = true; onUserSwiped?.(); }
-  }, [onUserSwiped]);
 
   const snapOpen = useCallback(() => {
     setIsOpen(true);
     setOffset(SWIPE_MAX);
     offsetRef.current = SWIPE_MAX;
-    fireSwipedOnce();
-  }, [fireSwipedOnce]);
+  }, []);
 
   const snapClose = useCallback(() => {
     setIsOpen(false);
@@ -104,12 +85,10 @@ function SwipeableItem({
     if (startXRef.current === null) return;
     const dx = e.touches[0].clientX - startXRef.current;
     const dy = Math.abs(e.touches[0].clientY - (startYRef.current ?? 0));
-
     if (isHorizontalRef.current === null && (Math.abs(dx) > 6 || dy > 6)) {
       isHorizontalRef.current = Math.abs(dx) > dy;
     }
     if (!isHorizontalRef.current) return;
-
     const base = isOpen ? SWIPE_MAX : 0;
     const next = Math.max(0, Math.min(SWIPE_MAX, base + dx));
     setOffset(next);
@@ -126,7 +105,7 @@ function SwipeableItem({
 
   return (
     <div className="relative overflow-hidden">
-      {/* Action strip — revealed on left as item slides right */}
+      {/* 操作按钮区（右滑后从左侧露出） */}
       <div className="absolute inset-y-0 left-0 flex" style={{ width: SWIPE_MAX }}>
         <button
           type="button"
@@ -154,13 +133,11 @@ function SwipeableItem({
         </button>
       </div>
 
-      {/* Sliding item content */}
+      {/* 滑动内容区 */}
       <div
         style={{
           transform: `translateX(${offset}px)`,
-          transition: isDragging
-            ? "none"
-            : "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",
+          transition: isDragging ? "none" : "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",
           willChange: "transform",
         }}
         onTouchStart={onTouchStart}
@@ -219,8 +196,8 @@ function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
   const [value, setValue] = useState("");
 
   const confirm = () => {
-    const trimmed = value.trim();
-    if (trimmed) { onAdd(trimmed); setValue(""); setActive(false); }
+    const t = value.trim();
+    if (t) { onAdd(t); setValue(""); setActive(false); }
   };
 
   if (!active) {
@@ -297,19 +274,23 @@ function AskAIDrawer({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* 半透明遮罩 */}
       <div
-        className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-[375px] -translate-x-1/2 rounded-t-3xl bg-white px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl">
-        {/* Handle bar */}
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#dde8dd]" />
+      {/* 抽屉本体：flex 列布局，固定高度，保证按钮始终可见 */}
+      <div className="fixed bottom-0 left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
+        style={{ maxHeight: "75vh" }}
+      >
+        {/* 拖动条 */}
+        <div className="flex shrink-0 justify-center pb-2 pt-3">
+          <div className="h-1 w-10 rounded-full bg-[#dde8dd]" />
+        </div>
 
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
+        {/* 标题栏 */}
+        <div className="flex shrink-0 items-center justify-between px-5 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eaf0ea]">
               <Sparkles className="h-3.5 w-3.5 text-[#4a7c6f]" strokeWidth={1.5} />
@@ -331,51 +312,34 @@ function AskAIDrawer({
           </button>
         </div>
 
-        {/* Question phase */}
-        {!state.answer && (
-          <>
-            <textarea
-              value={state.question}
-              onChange={(e) => onQuestionChange(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-xl bg-[#f0f4f0] px-4 py-3 text-sm text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/20"
-              placeholder="输入你的问题…"
-            />
-            <button
-              type="button"
-              onClick={onSend}
-              disabled={state.loading || !state.question.trim()}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2d4a3e] py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {state.loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>AI 思考中，请稍候…</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" strokeWidth={1.5} />
-                  发送
-                </>
+        {/* 可滚动内容区 */}
+        <div className="flex-1 overflow-y-auto px-5">
+          {/* 问题阶段 */}
+          {!state.answer && (
+            <>
+              <textarea
+                value={state.question}
+                onChange={(e) => onQuestionChange(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-xl bg-[#f0f4f0] px-4 py-3 text-sm text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/20"
+                placeholder="输入你的问题…"
+              />
+              {state.error && (
+                <div className="mt-3 rounded-xl bg-red-50 px-4 py-3">
+                  <p className="text-xs font-semibold text-red-600">发送失败</p>
+                  <p className="mt-1 text-xs leading-relaxed text-red-500">
+                    {state.error.length > 80
+                      ? "请求失败，请确认 DASHSCOPE_API_KEY 已在 .env.local 中正确配置。"
+                      : state.error}
+                  </p>
+                </div>
               )}
-            </button>
-            {state.error && (
-              <div className="mt-3 rounded-xl bg-red-50 px-4 py-3">
-                <p className="text-xs font-semibold text-red-600">发送失败</p>
-                <p className="mt-1 text-xs leading-relaxed text-red-500">
-                  {state.error.length > 80
-                    ? "API 请求失败，请检查 DASHSCOPE_API_KEY 是否已在 .env.local 中正确配置。"
-                    : state.error}
-                </p>
-              </div>
-            )}
-          </>
-        )}
+            </>
+          )}
 
-        {/* Answer phase */}
-        {state.answer && (
-          <div>
-            <div className="max-h-56 overflow-y-auto rounded-xl bg-[#eaf0ea] px-4 py-3">
+          {/* 回答阶段 */}
+          {state.answer && (
+            <div className="rounded-xl bg-[#eaf0ea] px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#4a7c6f]">
                 AI 建议
               </p>
@@ -383,15 +347,42 @@ function AskAIDrawer({
                 {state.answer}
               </p>
             </div>
+          )}
+        </div>
+
+        {/* 底部按钮区 — 始终固定在抽屉底部 */}
+        <div className="shrink-0 border-t border-[#f0f4f0] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+          {!state.answer ? (
+            /* 发送按钮 */
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={state.loading || !state.question.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2d4a3e] py-3.5 text-base font-semibold text-white shadow-md shadow-[#2d4a3e]/20 disabled:opacity-60"
+            >
+              {state.loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  AI 思考中，请稍候…
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" strokeWidth={1.5} />
+                  发送问题
+                </>
+              )}
+            </button>
+          ) : (
+            /* 再问按钮 */
             <button
               type="button"
               onClick={onReset}
-              className="mt-3 w-full rounded-xl border border-[#dde8dd] py-2.5 text-sm text-[#5c7268] hover:bg-[#f0f4f0]"
+              className="w-full rounded-2xl border-2 border-[#2d4a3e] py-3.5 text-base font-semibold text-[#2d4a3e] hover:bg-[#eaf0ea]"
             >
               再问一个问题
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );
@@ -432,20 +423,7 @@ export function PackingChecklist({
 }: PackingChecklistProps) {
   const { checked, total, percent } = countProgress(categories);
 
-  // ── Hint state ─────────────────────────────────────────────────────────────
-  const [showHint, setShowHint] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined" && !localStorage.getItem(HINT_KEY)) {
-      setShowHint(true);
-    }
-  }, []);
-
-  const dismissHint = useCallback(() => {
-    localStorage.setItem(HINT_KEY, "1");
-    setShowHint(false);
-  }, []);
-
-  // ── Edit state ─────────────────────────────────────────────────────────────
+  // ── 编辑状态 ──────────────────────────────────────────────────────────────
   const [editState, setEditState] = useState<EditState>(null);
 
   const startEdit = useCallback((categoryId: string, itemId: string, name: string) => {
@@ -459,7 +437,7 @@ export function PackingChecklist({
     setEditState(null);
   }, [editState, onEditItem]);
 
-  // ── Ask AI state ───────────────────────────────────────────────────────────
+  // ── 问AI状态 ──────────────────────────────────────────────────────────────
   const [askAI, setAskAI] = useState<AskAIState>(CLOSED_AI);
 
   const openAskAI = useCallback((itemName: string) => {
@@ -473,13 +451,19 @@ export function PackingChecklist({
     });
   }, [destination]);
 
+  // 使用 ref 读取最新 question，避免闭包陈旧问题
+  const askAIRef = useRef(askAI);
+  askAIRef.current = askAI;
+
   const sendAskAI = useCallback(async () => {
+    const question = askAIRef.current.question.trim();
+    if (!question) return;
     setAskAI((s) => ({ ...s, loading: true, error: null }));
     try {
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: askAI.question }),
+        body: JSON.stringify({ question }),
       });
       const data = (await res.json()) as { answer?: string; error?: string };
       if (!res.ok) throw new Error(data.error || "请求失败");
@@ -491,7 +475,7 @@ export function PackingChecklist({
         error: err instanceof Error ? err.message : "出错了",
       }));
     }
-  }, [askAI.question]);
+  }, []); // 通过 ref 读取 question，deps 为空
 
   const readyLabel =
     percent === 100 ? "All Ready! 🎉" : percent >= 60 ? "Almost There!" : `${percent}% Ready`;
@@ -499,7 +483,7 @@ export function PackingChecklist({
   return (
     <div className="flex flex-1 flex-col bg-[#f7f5f0] pb-28">
 
-      {/* ── Header ── */}
+      {/* ── 顶部 Header ── */}
       <div className="bg-white px-4 pb-4 pt-5 shadow-sm">
         <div className="mb-4 flex items-center gap-3">
           <button
@@ -520,16 +504,14 @@ export function PackingChecklist({
           </div>
         </div>
 
-        {/* Progress block */}
+        {/* 进度卡片 */}
         <div className="rounded-2xl bg-[#f7f5f0] px-4 py-3">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#9ab0a8]">
             Packing Status
           </p>
           <div className="flex items-end justify-between">
             <p className="text-lg font-bold text-[#1c2b26]">
-              已完成{" "}
-              <span className="text-[#2d4a3e]">{checked}</span>
-              {" "}/ {total}
+              已完成 <span className="text-[#2d4a3e]">{checked}</span> / {total}
             </p>
             <span className="rounded-full bg-[#2d4a3e]/10 px-2.5 py-0.5 text-xs font-semibold text-[#2d4a3e]">
               {readyLabel}
@@ -544,7 +526,7 @@ export function PackingChecklist({
         </div>
       </div>
 
-      {/* ── Destination overview ── */}
+      {/* ── 目的地概况 ── */}
       {destinationInfo && (
         <div className="mx-4 mt-3 rounded-2xl bg-[#eaf0ea] px-4 py-3">
           <div className="flex items-center gap-2">
@@ -559,47 +541,29 @@ export function PackingChecklist({
         </div>
       )}
 
-      {/* ── Swipe hint banner ── */}
-      {showHint && (
-        <div className="mx-4 mt-3 flex items-center gap-2.5 rounded-xl bg-[#2d4a3e]/8 px-3.5 py-2.5">
-          <span className="text-base">👉</span>
-          <p className="text-xs text-[#5c7268]">
-            右滑物品可<strong className="text-[#2d4a3e]">编辑</strong>、
-            <strong className="text-[#2d4a3e]">删除</strong>或
-            <strong className="text-[#2d4a3e]">问AI</strong>
-          </p>
-        </div>
-      )}
-
-      {/* ── Category list ── */}
+      {/* ── 分类清单 ── */}
       <div className="mx-4 mt-3 flex flex-col gap-3">
-        {categories.map((category, catIndex) => {
+        {categories.map((category) => {
           const Icon = CATEGORY_ICONS[category.name] ?? Sparkles;
           const catChecked = category.items.filter((i) => i.checked).length;
           const catTotal = category.items.length;
 
           return (
             <div key={category.id} className="rounded-2xl bg-white shadow-sm">
-              {/* Category header */}
-              <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              {/* 分类标题 */}
+              <div className="flex items-center justify-between px-4 pb-2 pt-4">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#eaf0ea]">
                     <Icon className="h-4 w-4 text-[#2d4a3e]" strokeWidth={1.5} />
                   </span>
-                  <h3 className="text-sm font-semibold text-[#1c2b26]">
-                    {category.name}
-                  </h3>
+                  <h3 className="text-sm font-semibold text-[#1c2b26]">{category.name}</h3>
                 </div>
-                <span className="text-xs text-[#9ab0a8]">
-                  {catChecked}/{catTotal}
-                </span>
+                <span className="text-xs text-[#9ab0a8]">{catChecked}/{catTotal}</span>
               </div>
 
-              {/* Items */}
+              {/* 物品列表 */}
               <ul>
-                {category.items.map((item, itemIndex) => {
-                  const isHintItem =
-                    showHint && catIndex === 0 && itemIndex === 0;
+                {category.items.map((item) => {
                   const isEditing =
                     editState?.categoryId === category.id &&
                     editState?.itemId === item.id;
@@ -610,24 +574,16 @@ export function PackingChecklist({
                         <div className="px-4 py-1">
                           <EditItemRow
                             value={editState.value}
-                            onChange={(v) =>
-                              setEditState((s) => s ? { ...s, value: v } : s)
-                            }
+                            onChange={(v) => setEditState((s) => s ? { ...s, value: v } : s)}
                             onConfirm={confirmEdit}
                             onCancel={() => setEditState(null)}
                           />
                         </div>
                       ) : (
                         <SwipeableItem
-                          isHintItem={isHintItem}
-                          onUserSwiped={dismissHint}
                           onAskAI={() => openAskAI(item.name)}
-                          onEdit={() =>
-                            startEdit(category.id, item.id, item.name)
-                          }
-                          onDelete={() =>
-                            onDeleteItem(category.id, item.id)
-                          }
+                          onEdit={() => startEdit(category.id, item.id, item.name)}
+                          onDelete={() => onDeleteItem(category.id, item.id)}
                         >
                           <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5">
                             <button
@@ -637,22 +593,14 @@ export function PackingChecklist({
                               aria-label={item.checked ? "取消勾选" : "勾选"}
                             >
                               {item.checked ? (
-                                <CheckCircle2
-                                  className="h-5 w-5 text-[#2d4a3e]"
-                                  strokeWidth={1.5}
-                                />
+                                <CheckCircle2 className="h-5 w-5 text-[#2d4a3e]" strokeWidth={1.5} />
                               ) : (
-                                <Circle
-                                  className="h-5 w-5 text-[#c8d8c8]"
-                                  strokeWidth={1.5}
-                                />
+                                <Circle className="h-5 w-5 text-[#c8d8c8]" strokeWidth={1.5} />
                               )}
                             </button>
                             <span
                               className={`text-sm leading-snug ${
-                                item.checked
-                                  ? "text-[#9ab0a8] line-through"
-                                  : "text-[#1c2b26]"
+                                item.checked ? "text-[#9ab0a8] line-through" : "text-[#1c2b26]"
                               }`}
                             >
                               {item.name}
@@ -665,7 +613,7 @@ export function PackingChecklist({
                 })}
               </ul>
 
-              {/* Add item row */}
+              {/* 添加物品 */}
               <div className="px-4 pb-4">
                 <AddItemRow onAdd={(name) => onAddItem(category.id, name)} />
               </div>
@@ -674,7 +622,7 @@ export function PackingChecklist({
         })}
       </div>
 
-      {/* ── Fixed save button ── */}
+      {/* ── 固定底部保存按钮 ── */}
       <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[375px] -translate-x-1/2 border-t border-[#dde8dd] bg-[#f7f5f0]/95 px-4 pt-3 backdrop-blur-sm">
         <button
           type="button"
@@ -687,14 +635,19 @@ export function PackingChecklist({
         </button>
       </div>
 
-      {/* ── Ask AI drawer ── */}
+      {/* ── 问AI抽屉 ── */}
       <AskAIDrawer
         state={askAI}
         onQuestionChange={(q) => setAskAI((s) => ({ ...s, question: q }))}
         onClose={() => setAskAI(CLOSED_AI)}
         onSend={sendAskAI}
         onReset={() =>
-          setAskAI((s) => ({ ...s, answer: "", question: `我要去${destination}，${s.itemName}怎么准备？` }))
+          setAskAI((s) => ({
+            ...s,
+            answer: "",
+            error: null,
+            question: `我要去${destination}，${s.itemName}怎么准备？`,
+          }))
         }
       />
     </div>
