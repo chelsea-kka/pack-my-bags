@@ -22,6 +22,12 @@ type GeneratedCategory = {
   items: string[];
 };
 
+type GeneratedDestinationInfo = {
+  season?: string;
+  climate?: string;
+  tips?: string;
+};
+
 function getSeasonHint(departureDate: string): string {
   const month = new Date(departureDate + "T00:00:00").getMonth() + 1;
   if (month >= 3 && month <= 5) return "春季";
@@ -50,6 +56,11 @@ function buildPrompt(
 ## 输出格式
 仅返回 JSON，不要 markdown 代码块，结构如下：
 {
+  "destination_info": {
+    "season": "当前季节（如：初夏 / 干季 / 深冬）",
+    "climate": "一句话描述当地该时段的气候特点（如：日均 28℃，湿热多阵雨，紫外线强）",
+    "tips": "2～3 句出行注意事项，涵盖气候应对、文化礼仪或安全提示"
+  },
   "categories": [
     { "name": "分类名称", "items": ["物品1", "物品2"] }
   ]
@@ -101,15 +112,26 @@ ${
 - 每个分类 3～5 条物品，共约 18～28 条，全部使用简体中文。`;
 }
 
-function parseResponse(text: string): GeneratedCategory[] {
+type ParsedResponse = {
+  categories: GeneratedCategory[];
+  destinationInfo?: GeneratedDestinationInfo;
+};
+
+function parseResponse(text: string): ParsedResponse {
   const trimmed = text.trim();
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
   const jsonStr = jsonMatch ? jsonMatch[0] : trimmed;
-  const parsed = JSON.parse(jsonStr) as { categories: GeneratedCategory[] };
+  const parsed = JSON.parse(jsonStr) as {
+    categories: GeneratedCategory[];
+    destination_info?: GeneratedDestinationInfo;
+  };
   if (!Array.isArray(parsed.categories)) {
     throw new Error("Invalid response format");
   }
-  return parsed.categories;
+  return {
+    categories: parsed.categories,
+    destinationInfo: parsed.destination_info,
+  };
 }
 
 async function generatePackingList(
@@ -175,7 +197,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const text = await generatePackingList(apiKey, prompt);
-    const categories = parseResponse(text);
+    const { categories, destinationInfo } = parseResponse(text);
 
     const normalized = CATEGORY_NAMES.map((name) => {
       const found =
@@ -189,6 +211,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       categories: normalized,
+      destinationInfo,
       modelUsed: QWEN_MODEL,
     });
   } catch (err) {

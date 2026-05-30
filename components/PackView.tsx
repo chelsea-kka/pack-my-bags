@@ -2,7 +2,7 @@
 
 import { ArrowLeft, MoreVertical } from "lucide-react";
 import { useCallback, useState } from "react";
-import type { PackingCategory, Trip } from "@/lib/types";
+import type { DestinationInfo, PackingCategory, Trip } from "@/lib/types";
 import { generateId, getCityImageUrl } from "@/lib/utils";
 import { NewTripForm } from "./NewTripForm";
 import { PackingChecklist } from "./PackingChecklist";
@@ -57,6 +57,9 @@ export function PackView({
   const [categories, setCategories] = useState<PackingCategory[]>(
     editingTrip?.categories ?? []
   );
+  const [destinationInfo, setDestinationInfo] = useState<DestinationInfo | undefined>(
+    editingTrip?.destinationInfo
+  );
   const [tripId, setTripId] = useState(editingTrip?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,6 +94,7 @@ export function PackView({
         error?: string;
         details?: string;
         categories?: { name: string; items: string[] }[];
+        destinationInfo?: DestinationInfo;
       };
       if (!res.ok) {
         const message = [data.error, data.details].filter(Boolean).join("\n\n");
@@ -102,6 +106,7 @@ export function PackView({
       }
 
       setCategories(categoriesFromApi(data.categories));
+      setDestinationInfo(data.destinationInfo);
       setTripId(generateId());
       setMode("checklist");
     } catch (err) {
@@ -137,6 +142,7 @@ export function PackView({
       days,
       additionalInfo: additionalInfo.trim() || undefined,
       categories,
+      destinationInfo,
       imageUrl:
         editingTrip?.imageUrl ?? getCityImageUrl(destination.trim()),
       createdAt: editingTrip?.createdAt ?? new Date().toISOString(),
@@ -154,6 +160,7 @@ export function PackView({
     setDays(5);
     setAdditionalInfo("");
     setCategories([]);
+    setDestinationInfo(undefined);
     setTripId("");
     setError(null);
   };
@@ -209,6 +216,7 @@ export function PackView({
           departureDate={departureDate}
           days={days}
           categories={categories}
+          destinationInfo={destinationInfo}
           onToggleItem={handleToggleItem}
           onSave={handleSave}
           saving={saving}

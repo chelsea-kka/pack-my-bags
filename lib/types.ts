@@ -10,6 +10,12 @@ export type PackingCategory = {
   items: PackingItem[];
 };
 
+export type DestinationInfo = {
+  season: string;
+  climate: string;
+  tips: string;
+};
+
 export type Trip = {
   id: string;
   destination: string;
@@ -17,6 +23,7 @@ export type Trip = {
   days: number;
   additionalInfo?: string;
   categories: PackingCategory[];
+  destinationInfo?: DestinationInfo;
   imageUrl: string;
   createdAt: string;
 };

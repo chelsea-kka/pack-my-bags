@@ -97,7 +97,7 @@ export function NewTripForm({
           <textarea
             value={additionalInfo}
             onChange={(e) => onAdditionalInfoChange(e.target.value)}
-            placeholder="例如：带小孩、商务出行、冬季旅行"
+            placeholder="告诉我你的特殊需求，例如：带小孩、商务出行、需要拍摄、住青旅需自备洗漱、蜜月旅行..."
             rows={3}
             className="w-full resize-none rounded-xl bg-[#EEF0FF] px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#3F29C8]/30"
           />

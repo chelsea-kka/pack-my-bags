@@ -8,8 +8,11 @@ import {
   Shirt,
   Smartphone,
   Sparkles,
+  Sun,
+  Thermometer,
+  Info,
 } from "lucide-react";
-import type { PackingCategory } from "@/lib/types";
+import type { DestinationInfo, PackingCategory } from "@/lib/types";
 import { countProgress, formatDateRange } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -26,6 +29,7 @@ type PackingChecklistProps = {
   departureDate: string;
   days: number;
   categories: PackingCategory[];
+  destinationInfo?: DestinationInfo;
   onToggleItem: (categoryId: string, itemId: string) => void;
   onSave: () => void;
   saving?: boolean;
@@ -36,6 +40,7 @@ export function PackingChecklist({
   departureDate,
   days,
   categories,
+  destinationInfo,
   onToggleItem,
   onSave,
   saving,
@@ -55,6 +60,30 @@ export function PackingChecklist({
           {formatDateRange(departureDate, days)}
         </p>
       </div>
+
+      {destinationInfo && (
+        <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#3F29C8]/10 to-[#7B61FF]/10 p-4 shadow-sm ring-1 ring-[#3F29C8]/10">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#3F29C8]/15">
+              <Sun className="h-4 w-4 text-[#3F29C8]" />
+            </span>
+            <h3 className="text-sm font-semibold text-[#3F29C8]">目的地概况</h3>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <Thermometer className="mt-0.5 h-4 w-4 shrink-0 text-[#7B61FF]" />
+              <div>
+                <span className="text-xs font-medium text-[#3F29C8]">{destinationInfo.season}&nbsp;·&nbsp;</span>
+                <span className="text-xs text-gray-600">{destinationInfo.climate}</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#7B61FF]" />
+              <p className="text-xs leading-relaxed text-gray-600">{destinationInfo.tips}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {categories.map((category) => {
