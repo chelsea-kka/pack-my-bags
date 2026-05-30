@@ -2,9 +2,15 @@
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
-  --color-primary: #3f29c8;
-  --color-primary-light: #eef0ff;
-  --color-surface: #f5f5ff;
+  --color-primary: #2d4a3e;
+  --color-primary-mid: #4a7c6f;
+  --color-primary-light: #eaf0ea;
+  --color-surface: #f7f5f0;
+  --color-card: #ffffff;
+  --color-border: #dde8dd;
+  --color-text-dark: #1c2b26;
+  --color-text-mid: #5c7268;
+  --color-text-light: #9ab0a8;
 }
 
 * {
@@ -13,9 +19,11 @@
 
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background-color: #f7f5f0;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: pointer;
+  filter: invert(25%) sepia(20%) saturate(500%) hue-rotate(100deg);
 }

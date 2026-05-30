@@ -54,7 +54,7 @@ export function App() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[375px] flex-col bg-[#F5F5FF]">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[375px] flex-col bg-[#F7F5F0]">
       {activeTab === "trips" ? (
         <TripsView
           trips={trips}

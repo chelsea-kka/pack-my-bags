@@ -39,6 +39,14 @@ export function formatDateRange(departureDate: string, days: number): string {
   return `${fmt(start)} - ${end.getMonth() + 1}月${end.getDate()}日`;
 }
 
+export function formatDateRangeShort(departureDate: string, days: number): string {
+  const start = new Date(departureDate + "T00:00:00");
+  const end = new Date(start);
+  end.setDate(end.getDate() + days - 1);
+  const fmt = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 export function countProgress(categories: PackingCategory[]): {
   checked: number;
   total: number;

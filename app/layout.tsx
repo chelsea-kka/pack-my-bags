@@ -8,15 +8,15 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Pack My Bags",
-  description: "智能旅行打包清单工具",
+  title: "Hygge Pack",
+  description: "更轻盈、更有温度的旅行打包助手",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#F5F5FF",
+  themeColor: "#F7F5F0",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={`${geistSans.variable} h-full`}>
-      <body className="min-h-dvh bg-[#F5F5FF] font-sans antialiased">
+      <body className="min-h-dvh bg-[#F7F5F0] font-sans antialiased">
         {children}
       </body>
     </html>

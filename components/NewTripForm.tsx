@@ -3,7 +3,7 @@
 import {
   Calendar,
   Clock,
-  Lightbulb,
+  Leaf,
   MapPin,
   Minus,
   Plus,
@@ -39,10 +39,11 @@ export function NewTripForm({
 }: NewTripFormProps) {
   return (
     <div className="flex flex-1 flex-col px-4 pb-28">
-      <div className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#3F29C8] to-[#5B4AE8] p-5 text-white shadow-lg">
-        <p className="text-lg font-bold">开启你的下一段旅程</p>
-        <p className="mt-1 text-sm text-white/80">
-          我们将为你智能生成行李清单
+      {/* 顶部 banner */}
+      <div className="mb-5 overflow-hidden rounded-2xl bg-[#2d4a3e] p-5 text-white shadow-md">
+        <p className="text-lg font-bold tracking-tight">开启你的下一段旅程</p>
+        <p className="mt-1 text-sm text-white/70">
+          告诉我目的地，我们来帮你智能打包
         </p>
       </div>
 
@@ -53,39 +54,37 @@ export function NewTripForm({
             value={destination}
             onChange={(e) => onDestinationChange(e.target.value)}
             placeholder="要去哪里？"
-            className="w-full rounded-xl bg-[#EEF0FF] px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#3F29C8]/30"
+            className="w-full rounded-xl bg-[#f0f4f0] px-4 py-3 text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/25"
           />
         </Field>
 
         <Field label="出发时间" icon={Calendar}>
-          <div className="relative">
-            <input
-              type="date"
-              value={departureDate}
-              onChange={(e) => onDepartureDateChange(e.target.value)}
-              className="w-full rounded-xl bg-[#EEF0FF] px-4 py-3 text-gray-900 outline-none focus:ring-2 focus:ring-[#3F29C8]/30"
-            />
-          </div>
+          <input
+            type="date"
+            value={departureDate}
+            onChange={(e) => onDepartureDateChange(e.target.value)}
+            className="w-full rounded-xl bg-[#f0f4f0] px-4 py-3 text-[#1c2b26] outline-none focus:ring-2 focus:ring-[#2d4a3e]/25"
+          />
         </Field>
 
         <Field label="旅行天数" icon={Clock}>
-          <div className="flex items-center justify-between rounded-xl bg-[#EEF0FF] px-4 py-2">
+          <div className="flex items-center justify-between rounded-xl bg-[#f0f4f0] px-4 py-2">
             <button
               type="button"
               onClick={() => onDaysChange(Math.max(1, days - 1))}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3F29C8] text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2d4a3e] text-white"
               aria-label="减少天数"
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-lg font-semibold text-[#1c2b26]">
               {days}{" "}
-              <span className="text-sm font-normal text-gray-500">天</span>
+              <span className="text-sm font-normal text-[#9ab0a8]">天</span>
             </span>
             <button
               type="button"
               onClick={() => onDaysChange(days + 1)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3F29C8] text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2d4a3e] text-white"
               aria-label="增加天数"
             >
               <Plus className="h-4 w-4" />
@@ -99,13 +98,14 @@ export function NewTripForm({
             onChange={(e) => onAdditionalInfoChange(e.target.value)}
             placeholder="告诉我你的特殊需求，例如：带小孩、商务出行、需要拍摄、住青旅需自备洗漱、蜜月旅行..."
             rows={3}
-            className="w-full resize-none rounded-xl bg-[#EEF0FF] px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#3F29C8]/30"
+            className="w-full resize-none rounded-xl bg-[#f0f4f0] px-4 py-3 text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/25"
           />
         </Field>
       </div>
 
-      <div className="mt-4 flex gap-2 rounded-xl bg-[#EEF0FF] p-3 text-sm text-gray-600">
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#3F29C8]" />
+      {/* 温馨提示 */}
+      <div className="mt-4 flex gap-2 rounded-xl bg-[#eaf0ea] p-3 text-sm text-[#5c7268]">
+        <Leaf className="mt-0.5 h-4 w-4 shrink-0 text-[#4a7c6f]" strokeWidth={1.5} />
         <p>
           温馨提示：准确的信息能帮助我们更好地规划您的行李，比如冬夏温差或亲子出行的特殊需求。
         </p>
@@ -128,7 +128,7 @@ export function NewTripForm({
           type="button"
           onClick={onSubmit}
           disabled={loading}
-          className="w-full rounded-2xl bg-[#3F29C8] py-4 text-base font-semibold text-white shadow-lg shadow-purple-300/50 transition-opacity disabled:opacity-60"
+          className="w-full rounded-2xl bg-[#2d4a3e] py-4 text-base font-semibold text-white shadow-lg shadow-[#2d4a3e]/20 transition-opacity disabled:opacity-60"
         >
           {loading ? "正在生成清单…" : "生成打包清单"}
         </button>
@@ -144,17 +144,17 @@ function Field({
   children,
 }: {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   optional?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="mb-4 last:mb-0">
       <div className="mb-2 flex items-center gap-1.5">
-        <Icon className="h-4 w-4 text-[#3F29C8]" />
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <Icon className="h-4 w-4 text-[#4a7c6f]" strokeWidth={1.5} />
+        <span className="text-sm font-medium text-[#1c2b26]">{label}</span>
         {optional && (
-          <span className="text-xs text-gray-400">（选填）</span>
+          <span className="text-xs text-[#9ab0a8]">（选填）</span>
         )}
       </div>
       {children}

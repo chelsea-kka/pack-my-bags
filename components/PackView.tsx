@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { DestinationInfo, PackingCategory, Trip } from "@/lib/types";
 import { generateId, getCityImageUrl } from "@/lib/utils";
@@ -60,6 +60,9 @@ export function PackView({
   const [destinationInfo, setDestinationInfo] = useState<DestinationInfo | undefined>(
     editingTrip?.destinationInfo
   );
+  const [imageUrl, setImageUrl] = useState<string>(
+    editingTrip?.imageUrl ?? ""
+  );
   const [tripId, setTripId] = useState(editingTrip?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -107,6 +110,7 @@ export function PackView({
 
       setCategories(categoriesFromApi(data.categories));
       setDestinationInfo(data.destinationInfo);
+      setImageUrl(getCityImageUrl(destination.trim()));
       setTripId(generateId());
       setMode("checklist");
     } catch (err) {
@@ -143,8 +147,7 @@ export function PackView({
       additionalInfo: additionalInfo.trim() || undefined,
       categories,
       destinationInfo,
-      imageUrl:
-        editingTrip?.imageUrl ?? getCityImageUrl(destination.trim()),
+      imageUrl: imageUrl || editingTrip?.imageUrl || getCityImageUrl(destination.trim()),
       createdAt: editingTrip?.createdAt ?? new Date().toISOString(),
     };
     onSaveTrip(trip);
@@ -161,6 +164,7 @@ export function PackView({
     setAdditionalInfo("");
     setCategories([]);
     setDestinationInfo(undefined);
+    setImageUrl("");
     setTripId("");
     setError(null);
   };
@@ -175,26 +179,20 @@ export function PackView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between px-4 py-3">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="rounded-full p-2 text-[#3F29C8] hover:bg-purple-50"
-          aria-label="返回"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-base font-bold text-[#3F29C8]">
-          {mode === "input" ? "新建行程" : "Pack My Bags"}
-        </h1>
-        <button
-          type="button"
-          className="rounded-full p-2 text-[#3F29C8] hover:bg-purple-50"
-          aria-label="更多"
-        >
-          <MoreVertical className="h-5 w-5" />
-        </button>
-      </header>
+      {mode === "input" && (
+        <header className="flex items-center justify-between px-4 py-3">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="rounded-full p-2 text-[#2d4a3e] hover:bg-[#eaf0ea]"
+            aria-label="返回"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-base font-bold text-[#1c2b26]">新建行程</h1>
+          <div className="w-9" />
+        </header>
+      )}
 
       {mode === "input" ? (
         <NewTripForm
@@ -217,8 +215,10 @@ export function PackView({
           days={days}
           categories={categories}
           destinationInfo={destinationInfo}
+          imageUrl={imageUrl || editingTrip?.imageUrl || ""}
           onToggleItem={handleToggleItem}
           onSave={handleSave}
+          onBack={handleBack}
           saving={saving}
         />
       )}
