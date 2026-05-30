@@ -83,7 +83,7 @@ export function PackView({
 
       setCategories(categoriesFromApi(data.categories));
       setDestinationInfo(data.destinationInfo);
-      setImageUrl(getCityImageUrl(destination.trim()));
+      setImageUrl(await getCityImageUrl(destination.trim()));
       setTripId(generateId());
       setMode("checklist");
     } catch (err) {
@@ -143,8 +143,12 @@ export function PackView({
   }, []);
 
   // ── Save / reset ──────────────────────────────────────────────────────────
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
+    const resolvedImageUrl =
+      imageUrl ||
+      editingTrip?.imageUrl ||
+      (await getCityImageUrl(destination.trim()));
     const trip: Trip = {
       id: tripId || editingTrip?.id || generateId(),
       destination: destination.trim(),
@@ -153,7 +157,7 @@ export function PackView({
       additionalInfo: additionalInfo.trim() || undefined,
       categories,
       destinationInfo,
-      imageUrl: imageUrl || editingTrip?.imageUrl || getCityImageUrl(destination.trim()),
+      imageUrl: resolvedImageUrl,
       createdAt: editingTrip?.createdAt ?? new Date().toISOString(),
     };
     onSaveTrip(trip);

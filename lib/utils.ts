@@ -143,10 +143,11 @@ const DESTINATION_KEYWORDS: Record<string, string> = {
 };
 
 /**
- * 根据目的地名称生成 Unsplash 关键词搜索图片 URL。
- * 支持精确匹配和子串匹配（如"法国·巴黎"→"巴黎"），未命中则直接用目的地名搜索。
+ * 根据目的地名称从 Unsplash API 获取匹配图片 URL。
+ * 支持精确匹配和子串匹配（如"法国·巴黎"→"巴黎"）。
+ * 请求失败时 fallback 到 picsum.photos 确定性占位图。
  */
-export function getCityImageUrl(destination: string): string {
+export async function getCityImageUrl(destination: string): Promise<string> {
   // 精确匹配
   let keyword = DESTINATION_KEYWORDS[destination];
 
@@ -160,10 +161,19 @@ export function getCityImageUrl(destination: string): string {
     }
   }
 
-  // 未命中：直接用目的地名作为英文关键词（对英文目的地也适用）
-  // 用关键词做 seed，同一目的地始终返回同一张图片，不会 404
-  const seed = encodeURIComponent(keyword ?? destination);
-  return `https://picsum.photos/seed/${seed}/800/480`;
+  const query = encodeURIComponent(keyword ?? `${destination} travel landscape`);
+  const fallback = `https://picsum.photos/seed/${query}/800/480`;
+
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/photos/random?query=${query}&orientation=landscape&client_id=U-E0oloa09w_4A0Ik8HdZ_f9DbBY8O2IY_sBa1wkMoI`,
+    );
+    if (!res.ok) return fallback;
+    const data = (await res.json()) as { urls?: { regular?: string } };
+    return data.urls?.regular ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function formatDate(dateStr: string): string {
