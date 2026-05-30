@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { DestinationInfo, PackingCategory, Trip } from "@/lib/types";
 import { generateId, getCityImageUrl } from "@/lib/utils";
@@ -17,8 +16,7 @@ type PackViewProps = {
 };
 
 function todayISO(): string {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
 }
 
 function categoriesFromApi(
@@ -44,43 +42,25 @@ export function PackView({
   const [mode, setMode] = useState<PackMode>(
     editingTrip ? "checklist" : "input"
   );
-  const [destination, setDestination] = useState(
-    editingTrip?.destination ?? ""
-  );
-  const [departureDate, setDepartureDate] = useState(
-    editingTrip?.departureDate ?? todayISO()
-  );
+  const [destination, setDestination] = useState(editingTrip?.destination ?? "");
+  const [departureDate, setDepartureDate] = useState(editingTrip?.departureDate ?? todayISO());
   const [days, setDays] = useState(editingTrip?.days ?? 5);
-  const [additionalInfo, setAdditionalInfo] = useState(
-    editingTrip?.additionalInfo ?? ""
-  );
-  const [categories, setCategories] = useState<PackingCategory[]>(
-    editingTrip?.categories ?? []
-  );
-  const [destinationInfo, setDestinationInfo] = useState<DestinationInfo | undefined>(
-    editingTrip?.destinationInfo
-  );
-  const [imageUrl, setImageUrl] = useState<string>(
-    editingTrip?.imageUrl ?? ""
-  );
+  const [additionalInfo, setAdditionalInfo] = useState(editingTrip?.additionalInfo ?? "");
+  const [categories, setCategories] = useState<PackingCategory[]>(editingTrip?.categories ?? []);
+  const [destinationInfo, setDestinationInfo] = useState<DestinationInfo | undefined>(editingTrip?.destinationInfo);
+  const [imageUrl, setImageUrl] = useState<string>(editingTrip?.imageUrl ?? "");
   const [tripId, setTripId] = useState(editingTrip?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
-    if (!destination.trim()) {
-      setError("请填写目的地");
-      return;
-    }
-    if (!departureDate) {
-      setError("请选择出发时间");
-      return;
-    }
+    if (!destination.trim()) { setError("请填写目的地"); return; }
+    if (!departureDate)      { setError("请选择出发时间"); return; }
 
     setLoading(true);
     setError(null);
-
     try {
       const res = await fetch("/api/generate-packing-list", {
         method: "POST",
@@ -92,21 +72,14 @@ export function PackView({
           additionalInfo: additionalInfo.trim() || undefined,
         }),
       });
-
       const data = (await res.json()) as {
         error?: string;
         details?: string;
         categories?: { name: string; items: string[] }[];
         destinationInfo?: DestinationInfo;
       };
-      if (!res.ok) {
-        const message = [data.error, data.details].filter(Boolean).join("\n\n");
-        throw new Error(message || "生成失败");
-      }
-
-      if (!data.categories?.length) {
-        throw new Error("API 未返回清单数据");
-      }
+      if (!res.ok) throw new Error([data.error, data.details].filter(Boolean).join("\n\n") || "生成失败");
+      if (!data.categories?.length) throw new Error("API 未返回清单数据");
 
       setCategories(categoriesFromApi(data.categories));
       setDestinationInfo(data.destinationInfo);
@@ -120,23 +93,56 @@ export function PackView({
     }
   }, [destination, departureDate, days, additionalInfo]);
 
-  const handleToggleItem = (categoryId: string, itemId: string) => {
+  // ── Item operations ───────────────────────────────────────────────────────
+  const handleToggleItem = useCallback((categoryId: string, itemId: string) => {
     setCategories((prev) =>
       prev.map((cat) =>
-        cat.id === categoryId
-          ? {
-              ...cat,
-              items: cat.items.map((item) =>
-                item.id === itemId
-                  ? { ...item, checked: !item.checked }
-                  : item
-              ),
-            }
-          : cat
+        cat.id !== categoryId ? cat : {
+          ...cat,
+          items: cat.items.map((item) =>
+            item.id === itemId ? { ...item, checked: !item.checked } : item
+          ),
+        }
       )
     );
-  };
+  }, []);
 
+  const handleAddItem = useCallback((categoryId: string, itemName: string) => {
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id !== categoryId ? cat : {
+          ...cat,
+          items: [...cat.items, { id: generateId(), name: itemName, checked: false }],
+        }
+      )
+    );
+  }, []);
+
+  const handleEditItem = useCallback((categoryId: string, itemId: string, newName: string) => {
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id !== categoryId ? cat : {
+          ...cat,
+          items: cat.items.map((item) =>
+            item.id === itemId ? { ...item, name: newName } : item
+          ),
+        }
+      )
+    );
+  }, []);
+
+  const handleDeleteItem = useCallback((categoryId: string, itemId: string) => {
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id !== categoryId ? cat : {
+          ...cat,
+          items: cat.items.filter((item) => item.id !== itemId),
+        }
+      )
+    );
+  }, []);
+
+  // ── Save / reset ──────────────────────────────────────────────────────────
   const handleSave = () => {
     setSaving(true);
     const trip: Trip = {
@@ -170,31 +176,14 @@ export function PackView({
   };
 
   const handleBack = () => {
-    if (mode === "checklist" && !editingTrip) {
-      setMode("input");
-      return;
-    }
+    if (mode === "checklist" && !editingTrip) { setMode("input"); return; }
     onBack?.();
   };
 
-  return (
-    <div className="flex flex-1 flex-col">
-      {mode === "input" && (
-        <header className="flex items-center justify-between px-4 py-3">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="rounded-full p-2 text-[#2d4a3e] hover:bg-[#eaf0ea]"
-            aria-label="返回"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-base font-bold text-[#1c2b26]">新建行程</h1>
-          <div className="w-9" />
-        </header>
-      )}
-
-      {mode === "input" ? (
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (mode === "input") {
+    return (
+      <div className="flex flex-1 flex-col">
         <NewTripForm
           destination={destination}
           departureDate={departureDate}
@@ -207,21 +196,28 @@ export function PackView({
           onDaysChange={setDays}
           onAdditionalInfoChange={setAdditionalInfo}
           onSubmit={handleGenerate}
-        />
-      ) : (
-        <PackingChecklist
-          destination={destination}
-          departureDate={departureDate}
-          days={days}
-          categories={categories}
-          destinationInfo={destinationInfo}
-          imageUrl={imageUrl || editingTrip?.imageUrl || ""}
-          onToggleItem={handleToggleItem}
-          onSave={handleSave}
           onBack={handleBack}
-          saving={saving}
         />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <PackingChecklist
+        destination={destination}
+        departureDate={departureDate}
+        days={days}
+        categories={categories}
+        destinationInfo={destinationInfo}
+        onToggleItem={handleToggleItem}
+        onAddItem={handleAddItem}
+        onEditItem={handleEditItem}
+        onDeleteItem={handleDeleteItem}
+        onSave={handleSave}
+        onBack={handleBack}
+        saving={saving}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   Calendar,
   Clock,
   MapPin,
@@ -21,6 +22,7 @@ type NewTripFormProps = {
   onDaysChange: (v: number) => void;
   onAdditionalInfoChange: (v: string) => void;
   onSubmit: () => void;
+  onBack: () => void;
 };
 
 export function NewTripForm({
@@ -35,9 +37,24 @@ export function NewTripForm({
   onDaysChange,
   onAdditionalInfoChange,
   onSubmit,
+  onBack,
 }: NewTripFormProps) {
   return (
-    <div className="flex flex-1 flex-col px-4 pb-28">
+    <div className="flex flex-1 flex-col pb-28">
+      {/* 顶部导航 */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-full p-2 text-[#2d4a3e] hover:bg-[#eaf0ea]"
+          aria-label="返回"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-base font-bold text-[#1c2b26]">新建行程</h1>
+      </div>
+
+      <div className="px-4">
       {/* 顶部 banner */}
       <div className="mb-5 overflow-hidden rounded-2xl bg-[#2d4a3e] p-5 text-white shadow-md">
         <p className="text-lg font-bold tracking-tight">开启你的下一段旅程</p>
@@ -101,10 +118,11 @@ export function NewTripForm({
           />
         </Field>
       </div>
+      </div>
 
       {error && (
         <div
-          className="mt-3 max-h-48 overflow-y-auto rounded-xl border border-red-200 bg-red-50 p-3 text-left"
+          className="mx-4 mt-3 max-h-48 overflow-y-auto rounded-xl border border-red-200 bg-red-50 p-3 text-left"
           role="alert"
         >
           <p className="mb-1 text-xs font-semibold text-red-700">错误详情</p>

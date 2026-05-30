@@ -10,14 +10,25 @@ import {
   Heart,
   HeartPulse,
   Map,
+  Pencil,
+  Plus,
   Save,
+  Send,
   Sparkles,
+  Trash2,
   Wind,
+  X,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DestinationInfo, PackingCategory } from "@/lib/types";
 import { countProgress, formatDateRangeShort } from "@/lib/utils";
 
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORY_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string; strokeWidth?: number }>
+> = {
   证件与支付: CreditCard,
   衣物与装备: Wind,
   电子设备: Camera,
@@ -26,14 +37,369 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string; s
   行程准备: Map,
 };
 
+const SWIPE_MAX = 120;      // px — fully open width
+const SWIPE_THRESHOLD = 52; // px — minimum to snap open
+const HINT_KEY = "hygge-pack-swipe-hint-seen";
+
+// ─── SwipeableItem ────────────────────────────────────────────────────────────
+
+function SwipeableItem({
+  children,
+  onAskAI,
+  onEdit,
+  onDelete,
+  isHintItem = false,
+  onUserSwiped,
+}: {
+  children: React.ReactNode;
+  onAskAI: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isHintItem?: boolean;
+  onUserSwiped?: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef<number | null>(null);
+  const startYRef = useRef<number | null>(null);
+  const isHorizontalRef = useRef<boolean | null>(null);
+  const offsetRef = useRef(0);
+  const firedRef = useRef(false);
+
+  // Onboarding hint animation: slide right then snap back
+  useEffect(() => {
+    if (!isHintItem) return;
+    const t1 = setTimeout(() => { setOffset(58); offsetRef.current = 58; }, 900);
+    const t2 = setTimeout(() => { setOffset(0);  offsetRef.current = 0;  }, 1600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [isHintItem]);
+
+  const fireSwipedOnce = useCallback(() => {
+    if (!firedRef.current) { firedRef.current = true; onUserSwiped?.(); }
+  }, [onUserSwiped]);
+
+  const snapOpen = useCallback(() => {
+    setIsOpen(true);
+    setOffset(SWIPE_MAX);
+    offsetRef.current = SWIPE_MAX;
+    fireSwipedOnce();
+  }, [fireSwipedOnce]);
+
+  const snapClose = useCallback(() => {
+    setIsOpen(false);
+    setOffset(0);
+    offsetRef.current = 0;
+  }, []);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startXRef.current = e.touches[0].clientX;
+    startYRef.current = e.touches[0].clientY;
+    isHorizontalRef.current = null;
+    setIsDragging(true);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startXRef.current === null) return;
+    const dx = e.touches[0].clientX - startXRef.current;
+    const dy = Math.abs(e.touches[0].clientY - (startYRef.current ?? 0));
+
+    if (isHorizontalRef.current === null && (Math.abs(dx) > 6 || dy > 6)) {
+      isHorizontalRef.current = Math.abs(dx) > dy;
+    }
+    if (!isHorizontalRef.current) return;
+
+    const base = isOpen ? SWIPE_MAX : 0;
+    const next = Math.max(0, Math.min(SWIPE_MAX, base + dx));
+    setOffset(next);
+    offsetRef.current = next;
+  };
+
+  const onTouchEnd = () => {
+    setIsDragging(false);
+    startXRef.current = null;
+    if (!isHorizontalRef.current) { isHorizontalRef.current = null; return; }
+    isHorizontalRef.current = null;
+    offsetRef.current > SWIPE_THRESHOLD ? snapOpen() : snapClose();
+  };
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Action strip — revealed on left as item slides right */}
+      <div className="absolute inset-y-0 left-0 flex" style={{ width: SWIPE_MAX }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onAskAI(); snapClose(); }}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-[#4a7c6f] text-white"
+        >
+          <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+          <span className="text-[10px] font-medium">问AI</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit(); snapClose(); }}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-[#8a9e8a] text-white"
+        >
+          <Pencil className="h-4 w-4" strokeWidth={1.5} />
+          <span className="text-[10px] font-medium">编辑</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-[#b07070] text-white"
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+          <span className="text-[10px] font-medium">删除</span>
+        </button>
+      </div>
+
+      {/* Sliding item content */}
+      <div
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: isDragging
+            ? "none"
+            : "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",
+          willChange: "transform",
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={isOpen ? snapClose : undefined}
+        className="relative bg-white"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── EditItemRow ──────────────────────────────────────────────────────────────
+
+function EditItemRow({
+  value,
+  onChange,
+  onConfirm,
+  onCancel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-white py-1.5">
+      <input
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onConfirm();
+          if (e.key === "Escape") onCancel();
+        }}
+        className="flex-1 rounded-lg bg-[#f0f4f0] px-3 py-2 text-sm text-[#1c2b26] outline-none focus:ring-2 focus:ring-[#2d4a3e]/20"
+      />
+      <button type="button" onClick={onConfirm} className="shrink-0 text-[#2d4a3e]">
+        <CheckCircle2 className="h-5 w-5" strokeWidth={1.5} />
+      </button>
+      <button type="button" onClick={onCancel} className="shrink-0 text-[#9ab0a8]">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// ─── AddItemRow ───────────────────────────────────────────────────────────────
+
+function AddItemRow({ onAdd }: { onAdd: (name: string) => void }) {
+  const [active, setActive] = useState(false);
+  const [value, setValue] = useState("");
+
+  const confirm = () => {
+    const trimmed = value.trim();
+    if (trimmed) { onAdd(trimmed); setValue(""); setActive(false); }
+  };
+
+  if (!active) {
+    return (
+      <button
+        type="button"
+        onClick={() => setActive(true)}
+        className="mt-3 flex items-center gap-1.5 text-[11px] font-medium text-[#9ab0a8] transition-colors hover:text-[#4a7c6f]"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        添加物品
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <input
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") confirm();
+          if (e.key === "Escape") { setValue(""); setActive(false); }
+        }}
+        placeholder="输入物品名称…"
+        className="flex-1 rounded-lg bg-[#f0f4f0] px-3 py-2 text-sm text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/20"
+      />
+      <button type="button" onClick={confirm} className="shrink-0 text-[#2d4a3e]">
+        <CheckCircle2 className="h-5 w-5" strokeWidth={1.5} />
+      </button>
+      <button
+        type="button"
+        onClick={() => { setValue(""); setActive(false); }}
+        className="shrink-0 text-[#9ab0a8]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// ─── AskAIDrawer ──────────────────────────────────────────────────────────────
+
+type AskAIState = {
+  open: boolean;
+  itemName: string;
+  question: string;
+  answer: string;
+  loading: boolean;
+  error: string | null;
+};
+
+const CLOSED_AI: AskAIState = {
+  open: false, itemName: "", question: "", answer: "", loading: false, error: null,
+};
+
+function AskAIDrawer({
+  state,
+  onQuestionChange,
+  onClose,
+  onSend,
+  onReset,
+}: {
+  state: AskAIState;
+  onQuestionChange: (q: string) => void;
+  onClose: () => void;
+  onSend: () => void;
+  onReset: () => void;
+}) {
+  if (!state.open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-[375px] -translate-x-1/2 rounded-t-3xl bg-white px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl">
+        {/* Handle bar */}
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#dde8dd]" />
+
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eaf0ea]">
+              <Sparkles className="h-3.5 w-3.5 text-[#4a7c6f]" strokeWidth={1.5} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#1c2b26]">问问 AI 顾问</p>
+              {state.itemName && (
+                <p className="text-[11px] text-[#9ab0a8]">关于 · {state.itemName}</p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f0f4f0] text-[#5c7268]"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Question phase */}
+        {!state.answer && (
+          <>
+            <textarea
+              value={state.question}
+              onChange={(e) => onQuestionChange(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-xl bg-[#f0f4f0] px-4 py-3 text-sm text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/20"
+              placeholder="输入你的问题…"
+            />
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={state.loading || !state.question.trim()}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2d4a3e] py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {state.loading ? (
+                <span className="animate-pulse">AI 思考中…</span>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" strokeWidth={1.5} />
+                  发送
+                </>
+              )}
+            </button>
+            {state.error && (
+              <p className="mt-2 text-center text-xs text-red-500">{state.error}</p>
+            )}
+          </>
+        )}
+
+        {/* Answer phase */}
+        {state.answer && (
+          <div>
+            <div className="max-h-56 overflow-y-auto rounded-xl bg-[#eaf0ea] px-4 py-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#4a7c6f]">
+                AI 建议
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#1c2b26]">
+                {state.answer}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onReset}
+              className="mt-3 w-full rounded-xl border border-[#dde8dd] py-2.5 text-sm text-[#5c7268] hover:bg-[#f0f4f0]"
+            >
+              再问一个问题
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── PackingChecklist (main) ──────────────────────────────────────────────────
+
+type EditState = { categoryId: string; itemId: string; value: string } | null;
+
 type PackingChecklistProps = {
   destination: string;
   departureDate: string;
   days: number;
   categories: PackingCategory[];
   destinationInfo?: DestinationInfo;
-  imageUrl: string;
   onToggleItem: (categoryId: string, itemId: string) => void;
+  onAddItem: (categoryId: string, itemName: string) => void;
+  onEditItem: (categoryId: string, itemId: string, newName: string) => void;
+  onDeleteItem: (categoryId: string, itemId: string) => void;
   onSave: () => void;
   onBack: () => void;
   saving?: boolean;
@@ -45,109 +411,166 @@ export function PackingChecklist({
   days,
   categories,
   destinationInfo,
-  imageUrl,
   onToggleItem,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
   onSave,
   onBack,
   saving,
 }: PackingChecklistProps) {
   const { checked, total, percent } = countProgress(categories);
 
+  // ── Hint state ─────────────────────────────────────────────────────────────
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem(HINT_KEY)) {
+      setShowHint(true);
+    }
+  }, []);
+
+  const dismissHint = useCallback(() => {
+    localStorage.setItem(HINT_KEY, "1");
+    setShowHint(false);
+  }, []);
+
+  // ── Edit state ─────────────────────────────────────────────────────────────
+  const [editState, setEditState] = useState<EditState>(null);
+
+  const startEdit = useCallback((categoryId: string, itemId: string, name: string) => {
+    setEditState({ categoryId, itemId, value: name });
+  }, []);
+
+  const confirmEdit = useCallback(() => {
+    if (!editState) return;
+    const trimmed = editState.value.trim();
+    if (trimmed) onEditItem(editState.categoryId, editState.itemId, trimmed);
+    setEditState(null);
+  }, [editState, onEditItem]);
+
+  // ── Ask AI state ───────────────────────────────────────────────────────────
+  const [askAI, setAskAI] = useState<AskAIState>(CLOSED_AI);
+
+  const openAskAI = useCallback((itemName: string) => {
+    setAskAI({
+      open: true,
+      itemName,
+      question: `我要去${destination}，${itemName}怎么准备？`,
+      answer: "",
+      loading: false,
+      error: null,
+    });
+  }, [destination]);
+
+  const sendAskAI = useCallback(async () => {
+    setAskAI((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const res = await fetch("/api/ask-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: askAI.question }),
+      });
+      const data = (await res.json()) as { answer?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || "请求失败");
+      setAskAI((s) => ({ ...s, loading: false, answer: data.answer ?? "" }));
+    } catch (err) {
+      setAskAI((s) => ({
+        ...s,
+        loading: false,
+        error: err instanceof Error ? err.message : "出错了",
+      }));
+    }
+  }, [askAI.question]);
+
   const readyLabel =
-    percent === 100 ? "All Ready!" : percent >= 60 ? "Almost There!" : `${percent}% Ready`;
+    percent === 100 ? "All Ready! 🎉" : percent >= 60 ? "Almost There!" : `${percent}% Ready`;
 
   return (
-    <div className="flex flex-1 flex-col pb-32">
-      {/* Hero 图 */}
-      <div className="relative h-52 w-full shrink-0">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={destination}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full bg-[#2d4a3e]" />
-        )}
-        {/* 深色渐变遮层 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+    <div className="flex flex-1 flex-col bg-[#f7f5f0] pb-28">
 
-        {/* 返回按钮 */}
-        <button
-          type="button"
-          onClick={onBack}
-          className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
-          aria-label="返回"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+      {/* ── Header ── */}
+      <div className="bg-white px-4 pb-4 pt-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f0f4f0] text-[#2d4a3e]"
+            aria-label="返回"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold text-[#1c2b26]">
+              {destination} · {days} 天
+            </h1>
+            <p className="text-xs text-[#9ab0a8]">
+              {formatDateRangeShort(departureDate, days)}
+            </p>
+          </div>
+        </div>
 
-        {/* 目的地标题 */}
-        <div className="absolute bottom-4 left-4 right-4">
-          <p className="text-xs font-medium uppercase tracking-widest text-white/70">
-            {formatDateRangeShort(departureDate, days)}
+        {/* Progress block */}
+        <div className="rounded-2xl bg-[#f7f5f0] px-4 py-3">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#9ab0a8]">
+            Packing Status
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-white drop-shadow-sm">
-            {destination}
-          </h1>
+          <div className="flex items-end justify-between">
+            <p className="text-lg font-bold text-[#1c2b26]">
+              已完成{" "}
+              <span className="text-[#2d4a3e]">{checked}</span>
+              {" "}/ {total}
+            </p>
+            <span className="rounded-full bg-[#2d4a3e]/10 px-2.5 py-0.5 text-xs font-semibold text-[#2d4a3e]">
+              {readyLabel}
+            </span>
+          </div>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[#dde8dd]">
+            <div
+              className="h-full rounded-full bg-[#2d4a3e] transition-all duration-500"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* 打包进度块 */}
-      <div className="mx-4 mt-4 rounded-2xl bg-white p-4 shadow-sm">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9ab0a8]">
-          Packing Status
-        </p>
-        <div className="mt-2 flex items-end justify-between">
-          <p className="text-xl font-bold text-[#1c2b26]">
-            已完成{" "}
-            <span className="text-[#2d4a3e]">
-              {checked}
-            </span>{" "}
-            / {total}
-          </p>
-          <span className="rounded-full bg-[#eaf0ea] px-3 py-1 text-xs font-semibold text-[#2d4a3e]">
-            {readyLabel}
-          </span>
-        </div>
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#dde8dd]">
-          <div
-            className="h-full rounded-full bg-[#2d4a3e] transition-all duration-500"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      </div>
-
-      {/* 目的地概况卡（如有） */}
+      {/* ── Destination overview ── */}
       {destinationInfo && (
-        <div className="mx-4 mt-3 rounded-2xl bg-[#eaf0ea] p-4">
+        <div className="mx-4 mt-3 rounded-2xl bg-[#eaf0ea] px-4 py-3">
           <div className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-[#4a7c6f]" strokeWidth={1.5} />
+            <Heart className="h-3.5 w-3.5 text-[#4a7c6f]" strokeWidth={1.5} />
             <span className="text-xs font-semibold text-[#2d4a3e]">
               {destinationInfo.season} · {destinationInfo.climate}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-[#5c7268]">
+          <p className="mt-1 text-xs leading-relaxed text-[#5c7268]">
             {destinationInfo.tips}
           </p>
         </div>
       )}
 
-      {/* 分类清单 */}
+      {/* ── Swipe hint banner ── */}
+      {showHint && (
+        <div className="mx-4 mt-3 flex items-center gap-2.5 rounded-xl bg-[#2d4a3e]/8 px-3.5 py-2.5">
+          <span className="text-base">👉</span>
+          <p className="text-xs text-[#5c7268]">
+            右滑物品可<strong className="text-[#2d4a3e]">编辑</strong>、
+            <strong className="text-[#2d4a3e]">删除</strong>或
+            <strong className="text-[#2d4a3e]">问AI</strong>
+          </p>
+        </div>
+      )}
+
+      {/* ── Category list ── */}
       <div className="mx-4 mt-3 flex flex-col gap-3">
-        {categories.map((category) => {
+        {categories.map((category, catIndex) => {
           const Icon = CATEGORY_ICONS[category.name] ?? Sparkles;
           const catChecked = category.items.filter((i) => i.checked).length;
           const catTotal = category.items.length;
 
           return (
-            <div
-              key={category.id}
-              className="rounded-2xl bg-white p-4 shadow-sm"
-            >
-              {/* 分类头 */}
-              <div className="mb-3 flex items-center justify-between">
+            <div key={category.id} className="rounded-2xl bg-white shadow-sm">
+              {/* Category header */}
+              <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#eaf0ea]">
                     <Icon className="h-4 w-4 text-[#2d4a3e]" strokeWidth={1.5} />
@@ -161,43 +584,87 @@ export function PackingChecklist({
                 </span>
               </div>
 
-              {/* 物品列表 */}
-              <ul className="space-y-2.5">
-                {category.items.map((item) => (
-                  <li key={item.id}>
-                    <label className="flex cursor-pointer items-start gap-3">
-                      <button
-                        type="button"
-                        onClick={() => onToggleItem(category.id, item.id)}
-                        className="mt-0.5 shrink-0"
-                        aria-label={item.checked ? "取消勾选" : "勾选"}
-                      >
-                        {item.checked ? (
-                          <CheckCircle2 className="h-5 w-5 text-[#2d4a3e]" strokeWidth={1.5} />
-                        ) : (
-                          <Circle className="h-5 w-5 text-[#c8d8c8]" strokeWidth={1.5} />
-                        )}
-                      </button>
-                      <span
-                        className={`text-sm leading-snug ${
-                          item.checked
-                            ? "text-[#9ab0a8] line-through"
-                            : "text-[#1c2b26]"
-                        }`}
-                      >
-                        {item.name}
-                      </span>
-                    </label>
-                  </li>
-                ))}
+              {/* Items */}
+              <ul>
+                {category.items.map((item, itemIndex) => {
+                  const isHintItem =
+                    showHint && catIndex === 0 && itemIndex === 0;
+                  const isEditing =
+                    editState?.categoryId === category.id &&
+                    editState?.itemId === item.id;
+
+                  return (
+                    <li key={item.id} className="border-t border-[#f0f4f0] first:border-t-0">
+                      {isEditing ? (
+                        <div className="px-4 py-1">
+                          <EditItemRow
+                            value={editState.value}
+                            onChange={(v) =>
+                              setEditState((s) => s ? { ...s, value: v } : s)
+                            }
+                            onConfirm={confirmEdit}
+                            onCancel={() => setEditState(null)}
+                          />
+                        </div>
+                      ) : (
+                        <SwipeableItem
+                          isHintItem={isHintItem}
+                          onUserSwiped={dismissHint}
+                          onAskAI={() => openAskAI(item.name)}
+                          onEdit={() =>
+                            startEdit(category.id, item.id, item.name)
+                          }
+                          onDelete={() =>
+                            onDeleteItem(category.id, item.id)
+                          }
+                        >
+                          <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5">
+                            <button
+                              type="button"
+                              onClick={() => onToggleItem(category.id, item.id)}
+                              className="mt-0.5 shrink-0"
+                              aria-label={item.checked ? "取消勾选" : "勾选"}
+                            >
+                              {item.checked ? (
+                                <CheckCircle2
+                                  className="h-5 w-5 text-[#2d4a3e]"
+                                  strokeWidth={1.5}
+                                />
+                              ) : (
+                                <Circle
+                                  className="h-5 w-5 text-[#c8d8c8]"
+                                  strokeWidth={1.5}
+                                />
+                              )}
+                            </button>
+                            <span
+                              className={`text-sm leading-snug ${
+                                item.checked
+                                  ? "text-[#9ab0a8] line-through"
+                                  : "text-[#1c2b26]"
+                              }`}
+                            >
+                              {item.name}
+                            </span>
+                          </label>
+                        </SwipeableItem>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
+
+              {/* Add item row */}
+              <div className="px-4 pb-4">
+                <AddItemRow onAdd={(name) => onAddItem(category.id, name)} />
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* 底部固定区域 */}
-      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[375px] -translate-x-1/2 border-t border-[#dde8dd] bg-[#F7F5F0]/95 px-4 pt-3 backdrop-blur-sm">
+      {/* ── Fixed save button ── */}
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[375px] -translate-x-1/2 border-t border-[#dde8dd] bg-[#f7f5f0]/95 px-4 pt-3 backdrop-blur-sm">
         <button
           type="button"
           onClick={onSave}
@@ -208,6 +675,17 @@ export function PackingChecklist({
           {saving ? "保存中…" : "完成并保存"}
         </button>
       </div>
+
+      {/* ── Ask AI drawer ── */}
+      <AskAIDrawer
+        state={askAI}
+        onQuestionChange={(q) => setAskAI((s) => ({ ...s, question: q }))}
+        onClose={() => setAskAI(CLOSED_AI)}
+        onSend={sendAskAI}
+        onReset={() =>
+          setAskAI((s) => ({ ...s, answer: "", question: `我要去${destination}，${s.itemName}怎么准备？` }))
+        }
+      />
     </div>
   );
 }
