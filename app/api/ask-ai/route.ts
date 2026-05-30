@@ -37,11 +37,11 @@ export async function POST(request: NextRequest) {
         {
           role: "system",
           content:
-            "你是一位资深旅行顾问，用简洁、实用、温暖的语气回答旅行准备问题。回答控制在150字以内，可以分点说明，直接给出可执行的具体建议，不要废话。",
+            "你是一位资深旅行顾问，用实用、温暖的语气回答旅行准备问题。回答300～500字，内容详细实用，分点说明，给出具体可执行的建议。",
         },
         { role: "user", content: question.trim() },
       ],
-      max_tokens: 512,
+      max_tokens: 1500,
     });
 
     const answer = completion.choices[0]?.message?.content;
