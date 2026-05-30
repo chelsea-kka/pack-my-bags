@@ -20,7 +20,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { DestinationInfo, PackingCategory } from "@/lib/types";
 import { countProgress, formatDateRangeShort } from "@/lib/utils";
 
@@ -270,18 +270,6 @@ function AskAIDrawer({
   onSend: () => void;
   onReset: () => void;
 }) {
-  const [bottomOffset, setBottomOffset] = useState(0);
-
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const handler = () => {
-      setBottomOffset(window.innerHeight - vv.height - vv.offsetTop);
-    };
-    vv.addEventListener("resize", handler);
-    return () => vv.removeEventListener("resize", handler);
-  }, []);
-
   if (!state.open) return null;
 
   return (
@@ -292,10 +280,10 @@ function AskAIDrawer({
         onClick={onClose}
       />
 
-      {/* 抽屉本体：flex 列布局，固定高度，保证按钮始终可见 */}
+      {/* 抽屉本体：固定在导航栏上方 */}
       <div
-        className="fixed left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
-        style={{ maxHeight: "calc(75vh - 4rem)", bottom: `calc(4rem + ${bottomOffset}px)` }}
+        className="fixed bottom-16 left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
+        style={{ maxHeight: "calc(75vh - 4rem)" }}
       >
         {/* 拖动条 */}
         <div className="flex shrink-0 justify-center pb-2 pt-3">
@@ -326,7 +314,7 @@ function AskAIDrawer({
         </div>
 
         {/* 可滚动内容区 */}
-        <div className="flex-1 overflow-y-auto px-5">
+        <div className="flex-1 overflow-y-auto px-5 min-h-[180px]">
           {/* 问题阶段 */}
           {!state.answer && (
             <>
