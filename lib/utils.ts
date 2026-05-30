@@ -161,8 +161,9 @@ export function getCityImageUrl(destination: string): string {
   }
 
   // 未命中：直接用目的地名作为英文关键词（对英文目的地也适用）
-  const query = encodeURIComponent(keyword ?? `${destination} travel landscape`);
-  return `https://source.unsplash.com/featured/800x480/?${query}`;
+  // 用关键词做 seed，同一目的地始终返回同一张图片，不会 404
+  const seed = encodeURIComponent(keyword ?? destination);
+  return `https://picsum.photos/seed/${seed}/800/480`;
 }
 
 export function formatDate(dateStr: string): string {
