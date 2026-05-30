@@ -9,6 +9,7 @@ import {
   CreditCard,
   Heart,
   HeartPulse,
+  Loader2,
   Map,
   Pencil,
   Plus,
@@ -70,8 +71,8 @@ function SwipeableItem({
   // Onboarding hint animation: slide right then snap back
   useEffect(() => {
     if (!isHintItem) return;
-    const t1 = setTimeout(() => { setOffset(58); offsetRef.current = 58; }, 900);
-    const t2 = setTimeout(() => { setOffset(0);  offsetRef.current = 0;  }, 1600);
+    const t1 = setTimeout(() => { setOffset(62); offsetRef.current = 62; }, 600);
+    const t2 = setTimeout(() => { setOffset(0);  offsetRef.current = 0;  }, 2300); // visible for ~1.7 s
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [isHintItem]);
 
@@ -344,10 +345,13 @@ function AskAIDrawer({
               type="button"
               onClick={onSend}
               disabled={state.loading || !state.question.trim()}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2d4a3e] py-3 text-sm font-semibold text-white disabled:opacity-50"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2d4a3e] py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {state.loading ? (
-                <span className="animate-pulse">AI 思考中…</span>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>AI 思考中，请稍候…</span>
+                </>
               ) : (
                 <>
                   <Send className="h-4 w-4" strokeWidth={1.5} />
@@ -356,7 +360,14 @@ function AskAIDrawer({
               )}
             </button>
             {state.error && (
-              <p className="mt-2 text-center text-xs text-red-500">{state.error}</p>
+              <div className="mt-3 rounded-xl bg-red-50 px-4 py-3">
+                <p className="text-xs font-semibold text-red-600">发送失败</p>
+                <p className="mt-1 text-xs leading-relaxed text-red-500">
+                  {state.error.length > 80
+                    ? "API 请求失败，请检查 DASHSCOPE_API_KEY 是否已在 .env.local 中正确配置。"
+                    : state.error}
+                </p>
+              </div>
             )}
           </>
         )}

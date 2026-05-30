@@ -1,9 +1,130 @@
 import type { PackingCategory, Trip } from "./types";
 
-/**
- * 中文目的地 → Unsplash 搜索关键词映射表
- * 覆盖常见国家、城市和国内热门目的地
- */
+// ─── Destination photo IDs (curated, stable Unsplash direct CDN links) ────────
+// Using direct photo IDs avoids the deprecated source.unsplash.com redirect.
+// URL format: https://images.unsplash.com/photo-{ID}?w=800&h=480&fit=crop&auto=format&q=80
+
+const DESTINATION_PHOTO_IDS: Record<string, string> = {
+  // East Asia
+  日本: "1490806843957-31f4c9a91c65",
+  东京: "1540959733332-eab4deabeeaf",
+  京都: "1493976040374-85c8e12f0c0e",
+  大阪: "1493976040374-85c8e12f0c0e",
+  韩国: "1517154421773-0855b07a25d4",
+  首尔: "1517154421773-0855b07a25d4",
+  // Southeast Asia
+  泰国: "1528360983277-13d401cdc186",
+  曼谷: "1528360983277-13d401cdc186",
+  清迈: "1528360983277-13d401cdc186",
+  巴厘岛: "1537996194471-e657df975ab4",
+  普吉岛: "1524492412937-28c6667b4d0e",
+  越南: "1559592413-7cec4d0cae2b",
+  河内: "1559592413-7cec4d0cae2b",
+  胡志明市: "1559592413-7cec4d0cae2b",
+  新加坡: "1525625293386-23a59d37df71",
+  印度: "1524492412937-28c6667b4d0e",
+  // Europe
+  法国: "1502602898657-3e91760cbb34",
+  巴黎: "1502602898657-3e91760cbb34",
+  意大利: "1515542622106-78bda8ba0e5b",
+  罗马: "1515542622106-78bda8ba0e5b",
+  威尼斯: "1534430480872-3498386e7856",
+  英国: "1513635269975-59663e0ac1ad",
+  伦敦: "1513635269975-59663e0ac1ad",
+  西班牙: "1539037116277-4db20889f2d4",
+  巴塞罗那: "1539037116277-4db20889f2d4",
+  希腊: "1506905925346-21bda4d32df4",
+  圣托里尼: "1506905925346-21bda4d32df4",
+  瑞士: "1531973576160-7125cd663d86",
+  荷兰: "1512470876302-972faa2aa9a4",
+  阿姆斯特丹: "1512470876302-972faa2aa9a4",
+  葡萄牙: "1511739001486-6bfe10ce785f",
+  里斯本: "1511739001486-6bfe10ce785f",
+  德国: "1511739001486-6bfe10ce785f",
+  奥地利: "1531973576160-7125cd663d86",
+  // Nordic
+  芬兰: "1519681393784-d120267933ba",
+  拉普兰: "1519681393784-d120267933ba",
+  冰岛: "1504829857797-ddff29c27927",
+  挪威: "1513519245088-8b1a55a9e0c9",
+  瑞典: "1519681393784-d120267933ba",
+  丹麦: "1513519245088-8b1a55a9e0c9",
+  // Oceania
+  澳大利亚: "1523482580672-f1450b69ef35",
+  悉尼: "1523482580672-f1450b69ef35",
+  新西兰: "1505764707775-d6e3c9b0f6f3",
+  // Middle East & Africa
+  迪拜: "1512453979798-5ea266f8880c",
+  土耳其: "1527838832700-5059252337ae",
+  // China domestic
+  北京: "1508804185872-173bbf0a4139",
+  上海: "1545558014-8692077e9b5c",
+  香港: "1536599018926-de2d30cad94a",
+  台湾: "1570804100373-bccc5d4c69f9",
+  台北: "1570804100373-bccc5d4c69f9",
+  成都: "1524492412937-28c6667b4d0e",
+  云南: "1505764707775-d6e3c9b0f6f3",
+  西藏: "1504829857797-ddff29c27927",
+  桂林: "1493976040374-85c8e12f0c0e",
+  张家界: "1493976040374-85c8e12f0c0e",
+  杭州: "1540959733332-eab4deabeeaf",
+  三亚: "1537996194471-e657df975ab4",
+  // Americas
+  美国: "1551854838-212c42b153a8",
+  纽约: "1548449547-7b32e8bd3c4c",
+  洛杉矶: "1534430480872-3498386e7856",
+  旧金山: "1534430480872-3498386e7856",
+  夏威夷: "1537996194471-e657df975ab4",
+  加拿大: "1505764707775-d6e3c9b0f6f3",
+  温哥华: "1519681393784-d120267933ba",
+};
+
+// Stable fallback pool (all are known-good Unsplash photo IDs)
+const FALLBACK_PHOTO_IDS = [
+  "1540959733332-eab4deabeeaf", // Tokyo street
+  "1502602898657-3e91760cbb34", // Paris
+  "1511739001486-6bfe10ce785f", // Europe
+  "1493976040374-85c8e12f0c0e", // Kyoto garden
+  "1524492412937-28c6667b4d0e", // India
+  "1539037116277-4db20889f2d4", // Barcelona
+  "1513635269975-59663e0ac1ad", // London
+  "1505764707775-d6e3c9b0f6f3", // Nature
+  "1528360983277-13d401cdc186", // Thailand
+  "1537996194471-e657df975ab4", // Bali
+  "1506905925346-21bda4d32df4", // Santorini
+  "1519681393784-d120267933ba", // Aurora
+  "1504829857797-ddff29c27927", // Iceland
+  "1531973576160-7125cd663d86", // Alps
+];
+
+export function getCityImageUrl(destination: string): string {
+  // Exact match
+  let photoId = DESTINATION_PHOTO_IDS[destination];
+
+  // Substring match (e.g. "法国·巴黎" → "巴黎")
+  if (!photoId) {
+    for (const [key, id] of Object.entries(DESTINATION_PHOTO_IDS)) {
+      if (destination.includes(key)) {
+        photoId = id;
+        break;
+      }
+    }
+  }
+
+  // Deterministic fallback from pool
+  if (!photoId) {
+    let hash = 0;
+    for (let i = 0; i < destination.length; i++) {
+      hash = (hash << 5) - hash + destination.charCodeAt(i);
+      hash |= 0;
+    }
+    photoId = FALLBACK_PHOTO_IDS[Math.abs(hash) % FALLBACK_PHOTO_IDS.length];
+  }
+
+  return `https://images.unsplash.com/photo-${photoId}?w=800&h=480&fit=crop&auto=format&q=80`;
+}
+
+// ─── (deprecated keyword map kept for reference only) ────────────────────────
 const DESTINATION_KEYWORDS: Record<string, string> = {
   // 亚洲国家
   泰国: "Thailand travel temple",
@@ -146,26 +267,6 @@ const DESTINATION_KEYWORDS: Record<string, string> = {
   澳门: "Macau casino travel",
 };
 
-/**
- * 根据目的地名称返回 Unsplash 按关键词搜索的图片 URL。
- * 使用 source.unsplash.com 的 featured 随机重定向接口，
- * 同一关键词每次会返回不同的真实图片。
- */
-export function getCityImageUrl(destination: string): string {
-  // 先查精确匹配，再查包含关系（例如"法国·巴黎"能命中"巴黎"）
-  let keyword = DESTINATION_KEYWORDS[destination];
-  if (!keyword) {
-    for (const [key, kw] of Object.entries(DESTINATION_KEYWORDS)) {
-      if (destination.includes(key)) {
-        keyword = kw;
-        break;
-      }
-    }
-  }
-  // 未命中时直接用目的地名作为关键词（英文目的地也能搜到）
-  const query = encodeURIComponent(keyword ?? `${destination} travel`);
-  return `https://source.unsplash.com/featured/800x500/?${query}`;
-}
 
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");

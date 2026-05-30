@@ -8,9 +8,10 @@ type TripsViewProps = {
   trips: Trip[];
   onNewTrip: () => void;
   onSelectTrip: (trip: Trip) => void;
+  onDeleteTrip: (id: string) => void;
 };
 
-export function TripsView({ trips, onNewTrip, onSelectTrip }: TripsViewProps) {
+export function TripsView({ trips, onNewTrip, onSelectTrip, onDeleteTrip }: TripsViewProps) {
   return (
     <div className="flex flex-1 flex-col px-4 pb-28 pt-5">
       {/* 顶部导航 */}
@@ -48,6 +49,7 @@ export function TripsView({ trips, onNewTrip, onSelectTrip }: TripsViewProps) {
             key={trip.id}
             trip={trip}
             onClick={() => onSelectTrip(trip)}
+            onDelete={onDeleteTrip}
           />
         ))}
 

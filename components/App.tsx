@@ -6,6 +6,7 @@ import {
   getTripsServerSnapshot,
   getTripsSnapshot,
   persistTrip,
+  removeTrip,
   subscribeTrips,
 } from "@/lib/trips-store";
 import { BottomNav } from "./BottomNav";
@@ -40,6 +41,10 @@ export function App() {
     setActiveTab("pack");
   };
 
+  const handleDeleteTrip = useCallback((id: string) => {
+    removeTrip(id);
+  }, []);
+
   const handlePackReset = () => {
     setEditingTrip(null);
     setPackKey((k) => k + 1);
@@ -60,6 +65,7 @@ export function App() {
           trips={trips}
           onNewTrip={handleNewTrip}
           onSelectTrip={handleSelectTrip}
+          onDeleteTrip={handleDeleteTrip}
         />
       ) : (
         <PackView

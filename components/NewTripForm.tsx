@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Loader2,
   MapPin,
   Minus,
   Plus,
@@ -132,14 +133,32 @@ export function NewTripForm({
         </div>
       )}
 
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f7f5f0]/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-3xl bg-white px-10 py-8 shadow-xl">
+            <Loader2 className="h-10 w-10 animate-spin text-[#2d4a3e]" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-[#2d4a3e]">正在为你生成专属清单...</p>
+            <p className="text-xs text-[#9ab0a8]">AI 正在分析你的行程，请稍候</p>
+          </div>
+        </div>
+      )}
+
       <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[375px] -translate-x-1/2 px-4">
         <button
           type="button"
           onClick={onSubmit}
           disabled={loading}
-          className="w-full rounded-2xl bg-[#2d4a3e] py-4 text-base font-semibold text-white shadow-lg shadow-[#2d4a3e]/20 transition-opacity disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2d4a3e] py-4 text-base font-semibold text-white shadow-lg shadow-[#2d4a3e]/20 transition-opacity disabled:opacity-60"
         >
-          {loading ? "正在生成清单…" : "生成打包清单"}
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              正在为你生成专属清单...
+            </>
+          ) : (
+            "生成打包清单"
+          )}
         </button>
       </div>
     </div>

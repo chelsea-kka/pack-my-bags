@@ -72,3 +72,7 @@ export function persistTrip(trip: Trip): void {
   }
   persistTrips(trips);
 }
+
+export function removeTrip(id: string): void {
+  persistTrips(getTrips().filter((t) => t.id !== id));
+}
