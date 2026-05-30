@@ -295,7 +295,7 @@ function AskAIDrawer({
       {/* 抽屉本体：flex 列布局，固定高度，保证按钮始终可见 */}
       <div
         className="fixed left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
-        style={{ maxHeight: "75vh", bottom: bottomOffset }}
+        style={{ maxHeight: "calc(75vh - 4rem)", bottom: `calc(4rem + ${bottomOffset}px)` }}
       >
         {/* 拖动条 */}
         <div className="flex shrink-0 justify-center pb-2 pt-3">
