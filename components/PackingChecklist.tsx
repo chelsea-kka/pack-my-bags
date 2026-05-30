@@ -20,7 +20,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DestinationInfo, PackingCategory } from "@/lib/types";
 import { countProgress, formatDateRangeShort } from "@/lib/utils";
 
@@ -270,6 +270,18 @@ function AskAIDrawer({
   onSend: () => void;
   onReset: () => void;
 }) {
+  const [bottomOffset, setBottomOffset] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handler = () => {
+      setBottomOffset(window.innerHeight - vv.height - vv.offsetTop);
+    };
+    vv.addEventListener("resize", handler);
+    return () => vv.removeEventListener("resize", handler);
+  }, []);
+
   if (!state.open) return null;
 
   return (
@@ -281,8 +293,9 @@ function AskAIDrawer({
       />
 
       {/* 抽屉本体：flex 列布局，固定高度，保证按钮始终可见 */}
-      <div className="fixed bottom-0 left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
-        style={{ maxHeight: "75vh" }}
+      <div
+        className="fixed left-1/2 z-50 flex w-full max-w-[375px] -translate-x-1/2 flex-col rounded-t-3xl bg-white shadow-2xl"
+        style={{ maxHeight: "75vh", bottom: bottomOffset }}
       >
         {/* 拖动条 */}
         <div className="flex shrink-0 justify-center pb-2 pt-3">
