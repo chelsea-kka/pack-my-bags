@@ -11,7 +11,7 @@ type BottomNavProps = {
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs: { id: TabId; label: string; icon: typeof CalendarDays }[] = [
     { id: "trips", label: "行程", icon: CalendarDays },
-    { id: "pack", label: "打包", icon: Package },
+    { id: "pack", label: "行李", icon: Package },
   ];
 
   return (

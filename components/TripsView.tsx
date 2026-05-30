@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, MapPin, Plus, UserCircle } from "lucide-react";
+import { BookOpen, MapPin, Plus } from "lucide-react";
 import type { Trip } from "@/lib/types";
 import { TripCard } from "./TripCard";
 
@@ -30,13 +30,6 @@ export function TripsView({ trips, onNewTrip, onSelectTrip }: TripsViewProps) {
           >
             <Plus className="h-4 w-4" strokeWidth={2.5} />
           </button>
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5c7268]"
-            aria-label="个人中心"
-          >
-            <UserCircle className="h-7 w-7" strokeWidth={1.5} />
-          </button>
         </div>
       </header>
 
@@ -45,7 +38,7 @@ export function TripsView({ trips, onNewTrip, onSelectTrip }: TripsViewProps) {
         <h1 className="text-3xl font-bold tracking-tight text-[#1c2b26]">
           我的行程
         </h1>
-        <p className="mt-1 text-sm text-[#9ab0a8]">探索更轻盈、更有温度的旅。</p>
+        <p className="mt-1 text-sm text-[#9ab0a8]">记录每一段值得期待的旅程</p>
       </div>
 
       {/* 行程列表 */}
@@ -70,7 +63,7 @@ export function TripsView({ trips, onNewTrip, onSelectTrip }: TripsViewProps) {
           <div className="text-center">
             <p className="text-sm font-semibold text-[#2d4a3e]">添加新行程</p>
             <p className="mt-0.5 text-xs text-[#9ab0a8]">
-              开启下一段充满灵感的北欧式慢旅。
+              开启下一段旅程
             </p>
           </div>
         </button>

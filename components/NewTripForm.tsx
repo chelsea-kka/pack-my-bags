@@ -3,7 +3,6 @@
 import {
   Calendar,
   Clock,
-  Leaf,
   MapPin,
   Minus,
   Plus,
@@ -101,14 +100,6 @@ export function NewTripForm({
             className="w-full resize-none rounded-xl bg-[#f0f4f0] px-4 py-3 text-[#1c2b26] placeholder:text-[#9ab0a8] outline-none focus:ring-2 focus:ring-[#2d4a3e]/25"
           />
         </Field>
-      </div>
-
-      {/* 温馨提示 */}
-      <div className="mt-4 flex gap-2 rounded-xl bg-[#eaf0ea] p-3 text-sm text-[#5c7268]">
-        <Leaf className="mt-0.5 h-4 w-4 shrink-0 text-[#4a7c6f]" strokeWidth={1.5} />
-        <p>
-          温馨提示：准确的信息能帮助我们更好地规划您的行李，比如冬夏温差或亲子出行的特殊需求。
-        </p>
       </div>
 
       {error && (
