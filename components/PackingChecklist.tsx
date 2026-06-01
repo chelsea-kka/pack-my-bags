@@ -542,6 +542,11 @@ export function PackingChecklist({
         </div>
       )}
 
+      {/* ── 操作引导 ── */}
+      <div className="mx-4 mt-2 flex items-center gap-1.5">
+        <span className="text-[12px] text-[#5c7268]">👉 右滑每个物品可问 AI、编辑或删除</span>
+      </div>
+
       {/* ── 分类清单 ── */}
       <div className="mx-4 mt-3 flex flex-col gap-3">
         {categories.map((category) => {
