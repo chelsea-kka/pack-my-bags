@@ -544,7 +544,7 @@ export function PackingChecklist({
 
       {/* ── 操作引导 ── */}
       <div className="mx-4 mt-2 flex items-center gap-1.5">
-        <span className="text-[12px] text-[#5c7268]">👉 右滑每个物品可问 AI、编辑或删除</span>
+        <span className="text-[13px] font-semibold text-[#2d4a3e]">👉👉👉 右滑每个物品可问 AI、编辑或删除</span>
       </div>
 
       {/* ── 分类清单 ── */}
